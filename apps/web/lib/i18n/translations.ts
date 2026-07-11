@@ -1,0 +1,311 @@
+export const locales = ["ko", "en"] as const;
+export type Locale = (typeof locales)[number];
+
+const dict = {
+  // common
+  loading: { ko: "불러오는 중...", en: "Loading..." },
+  save: { ko: "저장", en: "Save" },
+  saving: { ko: "저장 중...", en: "Saving..." },
+  delete: { ko: "삭제", en: "Delete" },
+  remove: { ko: "제거", en: "Remove" },
+  statusLabel: { ko: "현재 상태:", en: "Status:" },
+  statusSet: { ko: "설정됨", en: "Set" },
+  statusUnset: { ko: "미설정", en: "Not set" },
+
+  // bottom nav
+  navHome: { ko: "홈", en: "Home" },
+  navItems: { ko: "아이템", en: "Items" },
+  navScan: { ko: "스캔", en: "Scan" },
+  navLocations: { ko: "위치", en: "Locations" },
+  navMore: { ko: "더보기", en: "More" },
+
+  // login
+  loginIntro: { ko: "로그인해서 재고를 관리하세요.", en: "Log in to manage your inventory." },
+  bootstrapIntro: { ko: "첫 관리자 계정을 만들어 시작하세요.", en: "Create the first admin account to get started." },
+  namePlaceholder: { ko: "이름", en: "Name" },
+  emailPlaceholder: { ko: "이메일", en: "Email" },
+  passwordPlaceholder: { ko: "비밀번호", en: "Password" },
+  passwordMinPlaceholder: { ko: "비밀번호 (8자 이상)", en: "Password (8+ characters)" },
+  confirmPasswordPlaceholder: { ko: "비밀번호 확인", en: "Confirm password" },
+  createFirstAdmin: { ko: "첫 관리자 만들기", en: "Create first admin" },
+  loginButton: { ko: "로그인", en: "Log in" },
+  loggingIn: { ko: "로그인 중...", en: "Logging in..." },
+  creatingAccount: { ko: "생성 중...", en: "Creating..." },
+  loginError: { ko: "로그인에 실패했습니다. 이메일/비밀번호를 확인하세요.", en: "Login failed. Check your email/password." },
+  connectionError: { ko: "서버에 연결할 수 없습니다.", en: "Could not connect to the server." },
+  passwordMismatch: { ko: "비밀번호가 일치하지 않습니다.", en: "Passwords don't match." },
+  adminExistsError: { ko: "이미 관리자 계정이 있습니다. 로그인해주세요.", en: "An admin account already exists. Please log in." },
+  accountCreateError: { ko: "계정 생성에 실패했습니다.", en: "Failed to create account." },
+
+  // dashboard
+  dashboardTitle: { ko: "지금 해야 할 일", en: "Things to do" },
+  scanButton: { ko: "스캔하기", en: "Scan" },
+  noUrgentItems: { ko: "재고부족·유통기한 임박 항목이 없습니다.", en: "No low-stock or expiring items." },
+  lowStockSection: { ko: "재고부족", en: "Low stock" },
+  expiringSection: { ko: "유통기한 임박", en: "Expiring soon" },
+  recentSection: { ko: "최근 등록", en: "Recently added" },
+
+  // scan
+  scanTitle: { ko: "스캔", en: "Scan" },
+  scanHint: {
+    ko: "바코드/QR을 카메라에 비추면 자동으로 등록되거나 수량이 올라갑니다. 화면 전환 없이 계속 스캔할 수 있어요.",
+    en: "Point your camera at a barcode/QR to auto-register or bump quantity. Keep scanning without switching screens.",
+  },
+  cameraError: {
+    ko: "카메라를 사용할 수 없습니다. 브라우저 권한을 확인하거나 아래에서 바코드를 직접 입력하세요.",
+    en: "Camera unavailable. Check browser permissions or enter the barcode manually below.",
+  },
+  processingLabel: { ko: "처리 중...", en: "Processing..." },
+  createdLabel: { ko: "새로 등록됨", en: "Newly added" },
+  increasedLabel: { ko: "수량 증가", en: "Quantity increased" },
+  viewDetail: { ko: "상세보기", en: "View details" },
+  manualInputPlaceholder: {
+    ko: "카메라가 안 될 때 — 바코드 숫자 직접 입력",
+    en: "If the camera doesn't work — enter the barcode manually",
+  },
+  manualSubmit: { ko: "직접 입력으로 등록", en: "Register manually" },
+  scanCreatedToast: { ko: "새 아이템 등록: {name}", en: "New item added: {name}" },
+  scanIncreasedToast: { ko: "{name} 수량 +1 (현재 {qty})", en: "{name} +1 (now {qty})" },
+  scanFailToast: { ko: "스캔 처리 실패: {msg}", en: "Scan failed: {msg}" },
+
+  // item card
+  noLocation: { ko: "위치 없음", en: "No location" },
+  lowStockBadge: { ko: "재고부족", en: "Low stock" },
+  expiredBadge: { ko: "유통기한 지남", en: "Expired" },
+  adjustFailToast: { ko: "수량 변경 실패: {msg}", en: "Failed to change quantity: {msg}" },
+
+  // items list
+  itemsTitle: { ko: "아이템", en: "Items" },
+  registerManually: { ko: "직접 등록", en: "Add manually" },
+  searchPlaceholder: { ko: "이름 검색", en: "Search by name" },
+  allLocations: { ko: "모든 위치", en: "All locations" },
+  allCategories: { ko: "모든 카테고리", en: "All categories" },
+  noItems: { ko: "등록된 아이템이 없습니다.", en: "No items yet." },
+
+  // new item
+  newItemTitle: { ko: "아이템 직접 등록", en: "Add item manually" },
+  namePlaceholderRequired: { ko: "이름 (필수)", en: "Name (required)" },
+  quantityLabel: { ko: "수량", en: "Quantity" },
+  selectLocationOptional: { ko: "위치 선택 (선택)", en: "Choose location (optional)" },
+  selectCategoryOptional: { ko: "카테고리 선택 (선택)", en: "Choose category (optional)" },
+  barcodePlaceholder: {
+    ko: "기존 바코드 값이 있다면 입력 (선택, 없으면 상세페이지에서 QR 발급)",
+    en: "Enter an existing barcode if you have one (optional — you can issue a QR later)",
+  },
+  expiryOptional: { ko: "유통기한 (선택)", en: "Expiry date (optional)" },
+  warrantyOptional: { ko: "보증 만료일 (선택)", en: "Warranty expiry (optional)" },
+  notesPlaceholder: { ko: "메모 (선택)", en: "Notes (optional)" },
+  itemCreatedToast: { ko: "아이템이 등록되었습니다", en: "Item added" },
+  itemCreateFailToast: { ko: "등록 실패: {msg}", en: "Failed to add: {msg}" },
+
+  // item detail
+  qrIssuedToast: { ko: "내부 QR 라벨이 발급되었습니다", en: "Internal QR label issued" },
+  printRequestedToast: { ko: "출력 요청을 보냈습니다", en: "Print request sent" },
+  photoUploadedToast: { ko: "사진이 등록되었습니다", en: "Photo added" },
+  uploadFailFallback: { ko: "업로드 실패", en: "Upload failed" },
+  confirmDeleteItem: { ko: '"{name}"을(를) 삭제할까요?', en: 'Delete "{name}"?' },
+  locationLabel: { ko: "위치", en: "Location" },
+  noLocationOption: { ko: "위치 없음", en: "No location" },
+  categoryLabel: { ko: "카테고리", en: "Category" },
+  noCategoryOption: { ko: "카테고리 없음", en: "No category" },
+  minQuantityLabel: { ko: "재고부족 기준 수량", en: "Low-stock threshold" },
+  expiryLabel: { ko: "유통기한", en: "Expiry date" },
+  warrantyLabel: { ko: "보증 만료일", en: "Warranty expiry" },
+  photoUploadLabel: { ko: "사진 촬영/업로드", en: "Take or upload photo" },
+  barcodeSectionTitle: { ko: "바코드 / 식별자", en: "Barcodes / identifiers" },
+  noBarcodes: { ko: "등록된 바코드가 없습니다.", en: "No barcodes yet." },
+  sourceGenerated: { ko: "자체발급", en: "Self-issued" },
+  sourceMatter: { ko: "Matter", en: "Matter" },
+  sourceExisting: { ko: "기존", en: "Existing" },
+  viewLabel: { ko: "라벨보기", en: "View label" },
+  generateQrButton: { ko: "내부 QR 발급", en: "Issue internal QR" },
+  printRequestButton: { ko: "프린터로 출력", en: "Send to printer" },
+  manualBarcodePlaceholder: {
+    ko: "기존 바코드 또는 Matter 페어링 코드 입력",
+    en: "Enter existing barcode or Matter pairing code",
+  },
+  addExistingBarcode: { ko: "기존 바코드로 추가", en: "Add as existing barcode" },
+  addMatterBarcode: { ko: "Matter 코드로 추가", en: "Add as Matter code" },
+  movementHistoryTitle: { ko: "수량 변경 이력", en: "Quantity history" },
+  viewAll: { ko: "전체 보기", en: "View all" },
+  notesLabel: { ko: "메모", en: "Notes" },
+
+  // locations
+  locationsTitle: { ko: "위치", en: "Locations" },
+  newLocationPlaceholder: {
+    ko: "새 위치 이름 (예: 거실, 냉장고, 창고 선반 A)",
+    en: "New location name (e.g. living room, fridge, shelf A)",
+  },
+  noParentLocation: { ko: "상위 위치 없음 (최상위)", en: "No parent (top level)" },
+  confirmDeleteLocation: {
+    ko: "이 위치를 삭제할까요? 하위 위치도 함께 삭제됩니다.",
+    en: "Delete this location? Sub-locations will be deleted too.",
+  },
+  subOf: { ko: "{name} 하위", en: "under {name}" },
+  itemCount: { ko: "아이템 {n}개", en: "{n} items" },
+
+  // categories
+  categoriesTitle: { ko: "카테고리", en: "Categories" },
+  newCategoryPlaceholder: {
+    ko: "새 카테고리 이름 (예: 식료품, 공구, 전자기기)",
+    en: "New category name (e.g. groceries, tools, electronics)",
+  },
+  noParentCategory: { ko: "상위 카테고리 없음", en: "No parent category" },
+  confirmDeleteCategory: { ko: "이 카테고리를 삭제할까요?", en: "Delete this category?" },
+  add: { ko: "추가", en: "Add" },
+
+  // labels
+  labelsTitle: { ko: "라벨 인쇄", en: "Print labels" },
+  selectAll: { ko: "전체 선택", en: "Select all" },
+  deselectAll: { ko: "전체 해제", en: "Deselect all" },
+  labelsHint: {
+    ko: "아이템을 선택해 한 장의 인쇄용 시트로 받거나, 개별 라벨 이미지를 다운로드할 수 있습니다.",
+    en: "Select items to get a printable sheet, or download individual label images.",
+  },
+  downloadIndividual: { ko: "개별 다운로드", en: "Download" },
+  noBarcodeHint: {
+    ko: "바코드가 없는 아이템은 상세 페이지에서 먼저 QR을 발급하세요.",
+    en: "Items without a barcode need a QR issued from their detail page first.",
+  },
+  generatingSheet: { ko: "생성 중...", en: "Generating..." },
+  printSheetButton: { ko: "선택한 {n}개 시트로 인쇄", en: "Print sheet ({n} selected)" },
+  requestingWebhook: { ko: "요청 중...", en: "Requesting..." },
+  webhookPrintButton: { ko: "웹훅으로 출력 요청", en: "Send via webhook" },
+  sheetGenerateFail: { ko: "시트 생성 실패", en: "Failed to generate sheet" },
+  webhookPrintSuccessToast: { ko: "{n}개 항목 출력 요청을 보냈습니다", en: "Sent print request for {n} items" },
+  webhookPrintPartialToast: { ko: "{ok}개 성공, {fail}개 실패", en: "{ok} succeeded, {fail} failed" },
+
+  // history
+  historyTitle: { ko: "재고 이력", en: "Stock history" },
+  allItems: { ko: "모든 아이템", en: "All items" },
+  allReasons: { ko: "모든 사유", en: "All reasons" },
+  reasonRestock: { ko: "입고", en: "Restock" },
+  reasonConsume: { ko: "소비", en: "Consume" },
+  reasonAdjust: { ko: "조정", en: "Adjust" },
+  noHistory: { ko: "이력이 없습니다.", en: "No history yet." },
+
+  // users
+  usersTitle: { ko: "가족 구성원 계정", en: "Family accounts" },
+  roleGeneral: { ko: "일반", en: "General" },
+  roleAdmin: { ko: "관리자", en: "Admin" },
+  createAccountButton: { ko: "계정 만들기", en: "Create account" },
+  accountCreatedToast: { ko: "계정이 생성되었습니다", en: "Account created" },
+  confirmDeleteAccount: { ko: "이 계정을 삭제할까요?", en: "Delete this account?" },
+
+  // integrations settings
+  integrationsTitle: { ko: "외부 연동", en: "External integrations" },
+  integrationsHint: {
+    ko: "Open Food Facts는 키 없이 자동으로 조회됩니다. UPCItemDB 키를 등록하면 식료품 외 일반 제품 조회 커버리지가 넓어집니다.",
+    en: "Open Food Facts is queried automatically with no key. Adding a UPCItemDB key widens coverage beyond groceries.",
+  },
+  upcTitle: { ko: "UPCItemDB API 키", en: "UPCItemDB API key" },
+  apiKeyPlaceholder: { ko: "API 키 입력", en: "Enter API key" },
+  webhookTitle: { ko: "재고 이벤트 웹훅", en: "Inventory event webhook" },
+  webhookHint: {
+    ko: '아이템이 등록·변경될 때마다, 그리고 아이템 상세/라벨 화면에서 "프린터로 출력"을 요청할 때 이 URL로 아이템 정보를 전송합니다. 웹훅을 받을 수 있는 프린터·라벨 기기 자동화(예: Home Assistant)와 연동할 때 사용하며, 실제 출력이나 기기 제어는 전적으로 웹훅을 받는 쪽에서 처리합니다.',
+    en: 'Sends item info to this URL whenever an item is created/changed, and whenever "Send to printer" is requested from the item/labels screens. Use it to connect a webhook-capable printer/label-device automation (e.g. Home Assistant) — the actual printing or device control is entirely up to the receiver.',
+  },
+  viewPayloadFields: { ko: "전송되는 데이터 보기", en: "View payload fields" },
+  payloadEventDesc: {
+    ko: 'event — "item.updated" 또는 "item.print_requested"',
+    en: 'event — "item.updated" or "item.print_requested"',
+  },
+  payloadBarcodeDesc: {
+    ko: "barcodeValue, symbology — 대표 바코드 값과 종류. 이 값만으로도 프린터 쪽에서 바코드/QR을 직접 렌더링할 수 있습니다",
+    en: "barcodeValue, symbology — the primary barcode's value and type. Enough on its own for the receiver to render its own barcode/QR",
+  },
+  payloadImageDesc: {
+    ko: "labelImageUrl — 참고용으로 함께 보내는, 이미 렌더링된 라벨 이미지 주소 (선택 사항, 없어도 무방)",
+    en: "labelImageUrl — a pre-rendered label image URL sent for convenience (optional, fine to ignore)",
+  },
+  webhookUrlPlaceholder: { ko: "https://ha.example.com/api/webhook/...", en: "https://ha.example.com/api/webhook/..." },
+  pushKeyTitle: { ko: "푸시 알림", en: "Push notifications" },
+  pushKeyHint: {
+    ko: '유통기한·보증 만료 임박 알림을 브라우저 푸시로 보내려면 먼저 서버 키를 한 번 발급해야 합니다. 발급 후에는 가족 구성원 각자가 "더보기" 화면에서 알림을 켤 수 있습니다.',
+    en: 'To send expiry/warranty push alerts, the server key needs to be issued once. After that, each family member can enable notifications from the "More" screen.',
+  },
+  pushKeyStatusIssued: { ko: "발급됨", en: "Issued" },
+  pushKeyStatusNotIssued: { ko: "미발급", en: "Not issued" },
+  issuingButton: { ko: "발급 중...", en: "Issuing..." },
+  alreadyIssued: { ko: "이미 발급됨", en: "Already issued" },
+  issueKeyButton: { ko: "푸시 알림 키 발급", en: "Issue push key" },
+  savedToast: { ko: "저장되었습니다", en: "Saved" },
+  vapidIssuedToast: { ko: "푸시 알림 키가 발급되었습니다", en: "Push key issued" },
+
+  // backup / more
+  moreTitle: { ko: "더보기", en: "More" },
+  myAccountTitle: { ko: "내 계정", en: "My account" },
+  logoutButton: { ko: "로그아웃", en: "Log out" },
+  screenTitle: { ko: "화면", en: "Display" },
+  themeLabel: { ko: "테마", en: "Theme" },
+  notificationsTitle: { ko: "알림", en: "Notifications" },
+  menuTitle: { ko: "메뉴", en: "Menu" },
+  manageLocations: { ko: "위치 관리", en: "Manage locations" },
+  manageCategories: { ko: "카테고리 관리", en: "Manage categories" },
+  printLabels: { ko: "라벨 인쇄", en: "Print labels" },
+  stockHistory: { ko: "재고 이력", en: "Stock history" },
+  familyAccounts: { ko: "가족 구성원 계정", en: "Family accounts" },
+  integrationSettings: { ko: "외부 연동 설정", en: "Integration settings" },
+  backupRestoreTitle: { ko: "백업 / 복원", en: "Backup / restore" },
+  backupRestoreHint: {
+    ko: "전체 데이터를 파일로 내보내거나, 백업 파일로 복원할 수 있습니다.",
+    en: "Export all data to a file, or restore from a backup file.",
+  },
+  exportButton: { ko: "백업 내보내기", en: "Export backup" },
+  restoreLabel: { ko: "백업 파일로 복원", en: "Restore from backup file" },
+  confirmRestore: {
+    ko: "복원하면 현재 데이터가 모두 백업 파일의 내용으로 대체됩니다. 계속할까요?",
+    en: "Restoring will replace all current data with the backup's contents. Continue?",
+  },
+  restoreFailFallback: { ko: "복원 실패", en: "Restore failed" },
+  restoreSuccessToast: { ko: "복원이 완료되었습니다", en: "Restore complete" },
+  languageLabel: { ko: "언어", en: "Language" },
+
+  // theme toggle
+  themeLight: { ko: "라이트", en: "Light" },
+  themeDark: { ko: "다크", en: "Dark" },
+  themeSystem: { ko: "시스템", en: "System" },
+
+  // offline
+  offlineBannerText: {
+    ko: "오프라인 상태 — 저장된 내용만 보이며 변경사항은 반영되지 않습니다",
+    en: "Offline — showing saved content only, changes won't be saved",
+  },
+  offlineTitle: { ko: "오프라인 상태", en: "Offline" },
+  offlineBody: {
+    ko: "인터넷에 연결되어 있지 않아 이 화면을 불러올 수 없습니다. 이미 방문했던 화면은 캐시된 내용으로 열릴 수 있습니다. 연결이 복구되면 자동으로 다시 시도해 보세요.",
+    en: "You're not connected to the internet, so this screen can't load. Previously visited screens may still open from cache. Please try again once you're back online.",
+  },
+
+  // push notification settings
+  pushUnsupported: { ko: "이 브라우저는 푸시 알림을 지원하지 않습니다.", en: "This browser doesn't support push notifications." },
+  pushDescription: {
+    ko: "유통기한·보증 만료가 임박한 아이템을 브라우저 푸시로 알려드립니다.",
+    en: "Get browser push alerts when items are near their expiry or warranty date.",
+  },
+  pushStatusOff: { ko: "알림 꺼짐", en: "Notifications off" },
+  pushStatusNotConfigured: {
+    ko: "서버에 알림이 설정되지 않았습니다 (관리자에게 문의하세요)",
+    en: "Notifications aren't configured on the server (ask an admin)",
+  },
+  pushStatusDenied: {
+    ko: "브라우저에서 알림 권한이 차단되어 있습니다",
+    en: "Notification permission is blocked in this browser",
+  },
+  pushStatusOn: { ko: "알림 켜짐", en: "Notifications on" },
+  enableButton: { ko: "알림 켜기", en: "Enable notifications" },
+  processingButton: { ko: "처리 중...", en: "Working..." },
+  testButton: { ko: "테스트 알림", en: "Send test" },
+  disableButton: { ko: "알림 끄기", en: "Disable notifications" },
+  notConfiguredToast: {
+    ko: "서버에 푸시 알림이 설정되지 않았습니다",
+    en: "Push notifications aren't configured on the server",
+  },
+  permissionDeniedToast: { ko: "알림 권한이 거부되었습니다", en: "Notification permission was denied" },
+  enabledToast: { ko: "알림이 켜졌습니다", en: "Notifications enabled" },
+  testSentToast: { ko: "테스트 알림을 보냈습니다", en: "Test notification sent" },
+  disabledToast: { ko: "알림이 꺼졌습니다", en: "Notifications disabled" },
+} as const;
+
+export type TranslationKey = keyof typeof dict;
+export const translations: Record<TranslationKey, Record<Locale, string>> = dict;

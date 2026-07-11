@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-stash}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stash}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stash}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stash}
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+      PORT: "8080"
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost}
+      UPCITEMDB_API_KEY: ${UPCITEMDB_API_KEY:-}
+      INVENTORY_WEBHOOK_URL: ${INVENTORY_WEBHOOK_URL:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      # NEXT_PUBLIC_API_URL은 next build 시점에 클라이언트 번들에 박히므로 여기서(빌드 인자로)
+      # 지정해야 한다. 기본값("")은 Caddy가 /api/*를 api로 프록시하는 같은 오리진 상대경로.
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - api
+      - web
+
+volumes:
+  pgdata:
+  uploads:

@@ -1,0 +1,14 @@
+node_modules
+dist
+.next
+.env
+.env.*
+!.env.example
+*.log
+uploads/
+.DS_Store
+*.tsbuildinfo
+
+# AI agent tooling config (local-only, not part of the app)
+.claude/
+.agents/

@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  GENERAL
+}
+
+enum BarcodeSource {
+  GENERATED // 우리가 발급한 내부 QR
+  EXISTING  // 제조사 UPC/EAN 등 기존 바코드
+  MATTER    // 스마트홈 기기 페어링 QR/설정코드 — 식별자로만 취급, 실제 커미셔닝 연동 없음
+}
+
+enum BarcodeSymbology {
+  EAN13
+  UPCA
+  CODE128
+  QR
+  DATA_MATRIX
+  OTHER
+}
+
+enum StockMovementReason {
+  RESTOCK
+  CONSUME
+  ADJUST
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(GENERAL)
+  createdAt    DateTime @default(now())
+
+  createdItems      Item[]              @relation("ItemCreatedBy")
+  movements         StockMovement[]
+  pushSubscriptions PushSubscription[]
+}
+
+// 방 > 선반 > 박스 같은 계층형 위치. 자기참조로 트리를 표현한다.
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  photoUrl  String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  parent   Location?  @relation("LocationTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Location[] @relation("LocationTree")
+  items    Item[]
+}
+
+// 2단 정도의 단순 카테고리 트리
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  parentId String?
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Category[] @relation("CategoryTree")
+  items    Item[]
+}
+
+// 핵심 재고 아이템. 바코드가 없는 물건/기존 바코드가 있는 제품/Matter 기기용 QR을
+// 모두 이 하나의 모델 + Barcode(1:N)로 표현한다 (별도 Device 모델을 두지 않음).
+model Item {
+  id                 String    @id @default(cuid())
+  name               String
+  description        String?
+  quantity           Int       @default(1)
+  unit               String?
+  locationId         String?
+  categoryId         String?
+  minQuantity        Int?
+  purchaseDate       DateTime?
+  price              Float?
+  currency           String?
+  expiryDate         DateTime?
+  expiryNotifiedAt   DateTime?
+  warrantyExpiresAt  DateTime?
+  warrantyNotifiedAt DateTime?
+  photoUrl           String?
+  notes              String?
+  createdById        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  location    Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  barcodes    Barcode[]
+  attachments Attachment[]
+  movements   StockMovement[]
+
+  @@index([locationId])
+  @@index([categoryId])
+  @@index([expiryDate])
+}
+
+model Barcode {
+  id         String            @id @default(cuid())
+  itemId     String
+  value      String
+  symbology  BarcodeSymbology  @default(OTHER)
+  source     BarcodeSource     @default(EXISTING)
+  isPrimary  Boolean           @default(false)
+  createdAt  DateTime          @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  // value는 전역 유일 — /scan이 바코드 값으로 아이템을 찾는 로직이 값의 전역 유일성을
+  // 전제하기 때문 (itemId 단위 유일이면 서로 다른 아이템이 같은 값을 갖는 게 허용되어
+  // 스캔 매칭이 어느 아이템을 가리키는지 모호해진다).
+  @@unique([value])
+}
+
+// 외부 바코드 조회(Open Food Facts/UPCItemDB) 결과 캐시. 바코드 값 단위로 재사용해
+// 같은 제품을 여러 개 스캔할 때마다 외부 API를 다시 부르지 않는다.
+model ProductLookupCache {
+  barcodeValue String   @id
+  name         String?
+  brand        String?
+  imageUrl     String?
+  provider     String?
+  fetchedAt    DateTime @default(now())
+  rawPayload   Json?
+}
+
+// 수량 변화 이력 — 소모품(식료품 등) 재고 흐름 추적용
+model StockMovement {
+  id         String              @id @default(cuid())
+  itemId     String
+  delta      Int
+  reason     StockMovementReason @default(ADJUST)
+  userId     String?
+  occurredAt DateTime            @default(now())
+
+  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([itemId, occurredAt])
+}
+
+// 영수증/설명서/보증서 등 사진·PDF 첨부
+model Attachment {
+  id         String   @id @default(cuid())
+  filePath   String
+  mimeType   String
+  uploadedAt DateTime @default(now())
+
+  itemId String?
+  item   Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+}
+
+// 외부 API 연동 키 등 관리자가 UI에서 직접 입력/변경하는 설정값.
+// env 변수보다 우선 적용되며, 백업/복원 대상에서 의도적으로 제외한다.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// PWA Web Push 구독 (사용자·기기별). VAPID 키 쌍도 Setting 테이블에 저장한다.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  locale    String   @default("ko")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

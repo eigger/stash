@@ -1,0 +1,14 @@
+:80 {
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# api의 헬스체크 라우트는 /api 프리픽스가 없어서 별도로 연결해준다.
+	handle /health {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

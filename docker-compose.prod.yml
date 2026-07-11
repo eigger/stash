@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-stash}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stash}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/${GH_REPOSITORY_OWNER:-eigger}/stash-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -lc "npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/dist/index.js"
+    volumes:
+      - uploads:/app/uploads
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stash}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stash}
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+      PORT: "8080"
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost}
+      UPCITEMDB_API_KEY: ${UPCITEMDB_API_KEY:-}
+      INVENTORY_WEBHOOK_URL: ${INVENTORY_WEBHOOK_URL:-}
+
+  web:
+    image: ghcr.io/${GH_REPOSITORY_OWNER:-eigger}/stash-web:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - api
+      - web
+
+volumes:
+  pgdata:
+  uploads:

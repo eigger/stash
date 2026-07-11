@@ -1,0 +1,19 @@
+{
+  "name": "stash",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "dev:web": "npm run dev -w apps/web",
+    "build:shared": "npm run build -w packages/shared",
+    "build": "npm run build:shared && npm run build -w apps/api && npm run build -w apps/web",
+    "prisma:generate": "npm run prisma:generate -w apps/api",
+    "prisma:migrate": "npm run prisma:migrate -w apps/api",
+    "seed": "npm run seed -w apps/api",
+    "test": "npm run build:shared && npm run test -w apps/api"
+  }
+}
