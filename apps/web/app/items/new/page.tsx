@@ -24,6 +24,8 @@ export default function NewItemPage() {
   const [barcodeValue, setBarcodeValue] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [warrantyExpiresAt, setWarrantyExpiresAt] = useState("");
+  const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +53,8 @@ export default function NewItemPage() {
           categoryId: categoryId || null,
           expiryDate: expiryDate || null,
           warrantyExpiresAt: warrantyExpiresAt || null,
+          price: price ? Number(price) : null,
+          currency: currency.trim() || null,
           notes: notes || null,
           barcodeValue: barcodeValue.trim() || undefined,
         }),
@@ -116,6 +120,22 @@ export default function NewItemPage() {
           {t("warrantyOptional")}
           <input type="date" value={warrantyExpiresAt} onChange={(e) => setWarrantyExpiresAt(e.target.value)} />
         </label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder={t("pricePlaceholder")}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+          <input
+            placeholder={t("currencyPlaceholder")}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            style={{ maxWidth: 100 }}
+          />
+        </div>
         <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
         <button type="submit" disabled={saving || !name.trim()}>
           {saving ? t("saving") : t("save")}

@@ -242,6 +242,28 @@ export default function ItemDetailPage() {
           {t("photoUploadLabel")}
           <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} disabled={uploading} />
         </label>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <label style={{ flex: 1 }}>
+            {t("priceLabel")}
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={item.price ?? ""}
+              onChange={(e) => setItem({ ...item, price: e.target.value ? Number(e.target.value) : null })}
+              onBlur={(e) => updateField("price", e.target.value ? Number(e.target.value) : null)}
+            />
+          </label>
+          <label style={{ flex: 1 }}>
+            {t("currencyLabel")}
+            <input
+              value={item.currency ?? ""}
+              onChange={(e) => setItem({ ...item, currency: e.target.value })}
+              onBlur={(e) => updateField("currency", e.target.value || null)}
+            />
+          </label>
+        </div>
       </div>
 
       <div className="card">

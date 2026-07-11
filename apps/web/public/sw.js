@@ -11,7 +11,10 @@ const SHELL_ASSETS = [
   "/categories",
   "/labels",
   "/history",
+  "/shopping",
+  "/trash",
   "/backup",
+  "/settings",
   "/offline",
 ];
 
