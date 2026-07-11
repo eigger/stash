@@ -50,6 +50,31 @@ docker compose -f docker-compose.prod.yml up -d
 
 Requires GHCR images (`stash-api`, `stash-web`) published via `.github/workflows/docker-release.yml` — update `GH_REPOSITORY_OWNER` in `.env` and the image names in `docker-compose.prod.yml` / `proxmox/install/stash-install.sh` to match your GitHub repo before relying on the Proxmox installer.
 
+## Proxmox VE (LXC)
+
+Run this in the Proxmox VE host shell (web UI → select node → `Shell`) to launch the community-scripts-style interactive installer, which creates and provisions a Debian 13 LXC container with Docker:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/eigger/stash/master/proxmox/ct/stash.sh)"
+```
+
+What the install script ([`proxmox/install/stash-install.sh`](./proxmox/install/stash-install.sh)) does inside the container:
+
+- Installs Docker Engine
+- Writes `Caddyfile`, `docker-compose.prod.yml`, and a `.env` with randomly generated secrets to `/opt/stash`
+- Sets up a `stash.service` systemd unit so the stack starts on boot
+- Installs an `update` command for use inside the container
+
+Once installation finishes, open the `http://<container-IP>:80` URL printed to the console and create the first admin account.
+
+To update the container to the latest images, run this inside the container console:
+
+```sh
+update
+```
+
+By default this targets the `eigger/stash` GHCR images (`stash-api`, `stash-web`). If you've forked the repo, follow the [Production](#production) instructions to set `GH_REPOSITORY_OWNER`, then also update the repo path in `proxmox/ct/stash.sh` and the image names in `proxmox/install/stash-install.sh` to match.
+
 ## Notes
 
 - External barcode lookup (Open Food Facts, UPCItemDB) is optional — everything works with manual entry and self-issued QR codes alone.
