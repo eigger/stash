@@ -40,6 +40,18 @@ function requestFailedMessage(status: number): string {
   return locale === "en" ? `Request failed (${status})` : `요청 실패 (${status})`;
 }
 
+// 4xx(요청 자체가 잘못됨)와 5xx/네트워크(일시적 문제)를 호출부에서 구분할 수 있어야
+// 하는 경우가 있다(예: 오프라인 스캔 큐 재전송 — 영구히 거부된 요청과 "나중에 다시
+// 시도하면 될 수도 있는" 요청을 다르게 처리해야 함) — 그래서 상태 코드를 실어 던진다.
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await apiFetch(path, init);
   if (!res.ok) {
@@ -48,7 +60,7 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
     // Zod 검증 실패 시에는 객체(flatten() 결과)로 온다 — 문자열은 그대로, 객체만 JSON.stringify.
     const message =
       typeof body?.error === "string" ? body.error : body?.error ? JSON.stringify(body.error) : requestFailedMessage(res.status);
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

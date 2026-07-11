@@ -16,7 +16,7 @@ const dict = {
   navHome: { ko: "홈", en: "Home" },
   navItems: { ko: "아이템", en: "Items" },
   navScan: { ko: "스캔", en: "Scan" },
-  navLocations: { ko: "위치", en: "Locations" },
+  navHistory: { ko: "이력", en: "History" },
   navMore: { ko: "더보기", en: "More" },
 
   // login
@@ -40,10 +40,29 @@ const dict = {
   // dashboard
   dashboardTitle: { ko: "지금 해야 할 일", en: "Things to do" },
   scanButton: { ko: "스캔하기", en: "Scan" },
+  totalValueLabel: { ko: "총 자산가치", en: "Total value" },
   noUrgentItems: { ko: "재고부족·유통기한 임박 항목이 없습니다.", en: "No low-stock or expiring items." },
+  onboardingTitle: { ko: "시작해볼까요?", en: "Let's get started" },
+  onboardingHint: {
+    ko: "아직 등록된 아이템이 없습니다. 바로 스캔해서 첫 아이템을 등록하거나, 먼저 위치·카테고리를 만들어두면 이후 정리가 편해집니다.",
+    en: "No items yet. Scan something to add your first item, or set up locations/categories first to make organizing easier later.",
+  },
+  dashboardLoadFailed: {
+    ko: "대시보드 정보를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.",
+    en: "Couldn't load dashboard data. Please refresh in a moment.",
+  },
   lowStockSection: { ko: "재고부족", en: "Low stock" },
   expiringSection: { ko: "유통기한 임박", en: "Expiring soon" },
   recentSection: { ko: "최근 등록", en: "Recently added" },
+
+  // shopping list
+  shoppingListTitle: { ko: "장보기 리스트", en: "Shopping list" },
+  shoppingListLink: { ko: "장보기 리스트로 보기", en: "View shopping list" },
+  shoppingListHint: {
+    ko: "재고가 부족한 항목입니다. 사 온 만큼 + 버튼을 눌러주세요 — 기준 수량을 넘으면 목록에서 빠집니다.",
+    en: "Items running low. Tap + for each one you buy — it drops off once it's back above the threshold.",
+  },
+  shoppingListEmpty: { ko: "장 볼 항목이 없습니다.", en: "Nothing to buy right now." },
 
   // scan
   scanTitle: { ko: "스캔", en: "Scan" },
@@ -58,15 +77,28 @@ const dict = {
   processingLabel: { ko: "처리 중...", en: "Processing..." },
   createdLabel: { ko: "새로 등록됨", en: "Newly added" },
   increasedLabel: { ko: "수량 증가", en: "Quantity increased" },
+  decreasedLabel: { ko: "수량 감소", en: "Quantity decreased" },
   viewDetail: { ko: "상세보기", en: "View details" },
   manualInputPlaceholder: {
     ko: "카메라가 안 될 때 — 바코드 숫자 직접 입력",
     en: "If the camera doesn't work — enter the barcode manually",
   },
   manualSubmit: { ko: "직접 입력으로 등록", en: "Register manually" },
+  scanModeRestock: { ko: "입고 (+1)", en: "Restock (+1)" },
+  scanModeConsume: { ko: "소비 (-1)", en: "Consume (-1)" },
   scanCreatedToast: { ko: "새 아이템 등록: {name}", en: "New item added: {name}" },
   scanIncreasedToast: { ko: "{name} 수량 +1 (현재 {qty})", en: "{name} +1 (now {qty})" },
+  scanDecreasedToast: { ko: "{name} 수량 -1 (현재 {qty})", en: "{name} -1 (now {qty})" },
   scanFailToast: { ko: "스캔 처리 실패: {msg}", en: "Scan failed: {msg}" },
+  scanQueuedToast: {
+    ko: "오프라인 상태 — 온라인이 되면 자동으로 전송됩니다",
+    en: "Offline — this will send automatically once you're back online",
+  },
+  scanQueuePendingHint: { ko: "전송 대기 중인 스캔 {count}건", en: "{count} scan(s) waiting to sync" },
+  scanQueueFlushedToast: {
+    ko: "대기 중이던 스캔 {synced}건 전송 완료 (거부됨 {rejected}건)",
+    en: "Synced {synced} queued scan(s) ({rejected} rejected)",
+  },
 
   // item card
   noLocation: { ko: "위치 없음", en: "No location" },
@@ -81,6 +113,17 @@ const dict = {
   allLocations: { ko: "모든 위치", en: "All locations" },
   allCategories: { ko: "모든 카테고리", en: "All categories" },
   noItems: { ko: "등록된 아이템이 없습니다.", en: "No items yet." },
+  loadMoreButton: { ko: "더 보기", en: "Load more" },
+  sortRecent: { ko: "최근 등록순", en: "Recently added" },
+  sortQuantityAsc: { ko: "수량 적은순", en: "Lowest quantity" },
+  sortExpiryAsc: { ko: "유통기한 임박순", en: "Expiring soonest" },
+  csvExportButton: { ko: "CSV 내보내기", en: "Export CSV" },
+  csvImportButton: { ko: "CSV로 가져오기", en: "Import from CSV" },
+  csvImportFailFallback: { ko: "CSV 가져오기 실패", en: "CSV import failed" },
+  csvImportResultToast: {
+    ko: "{created}개 등록됨 (실패 {errors}건)",
+    en: "{created} added ({errors} failed)",
+  },
 
   // new item
   newItemTitle: { ko: "아이템 직접 등록", en: "Add item manually" },
@@ -95,6 +138,8 @@ const dict = {
   expiryOptional: { ko: "유통기한 (선택)", en: "Expiry date (optional)" },
   warrantyOptional: { ko: "보증 만료일 (선택)", en: "Warranty expiry (optional)" },
   notesPlaceholder: { ko: "메모 (선택)", en: "Notes (optional)" },
+  pricePlaceholder: { ko: "가격 (선택)", en: "Price (optional)" },
+  currencyPlaceholder: { ko: "통화 (예: KRW)", en: "Currency (e.g. USD)" },
   itemCreatedToast: { ko: "아이템이 등록되었습니다", en: "Item added" },
   itemCreateFailToast: { ko: "등록 실패: {msg}", en: "Failed to add: {msg}" },
 
@@ -103,7 +148,10 @@ const dict = {
   printRequestedToast: { ko: "출력 요청을 보냈습니다", en: "Print request sent" },
   photoUploadedToast: { ko: "사진이 등록되었습니다", en: "Photo added" },
   uploadFailFallback: { ko: "업로드 실패", en: "Upload failed" },
-  confirmDeleteItem: { ko: '"{name}"을(를) 삭제할까요?', en: 'Delete "{name}"?' },
+  confirmDeleteItem: {
+    ko: '"{name}"을(를) 휴지통으로 이동할까요? 나중에 복구할 수 있습니다.',
+    en: 'Move "{name}" to trash? You can restore it later.',
+  },
   locationLabel: { ko: "위치", en: "Location" },
   noLocationOption: { ko: "위치 없음", en: "No location" },
   categoryLabel: { ko: "카테고리", en: "Category" },
@@ -112,6 +160,8 @@ const dict = {
   expiryLabel: { ko: "유통기한", en: "Expiry date" },
   warrantyLabel: { ko: "보증 만료일", en: "Warranty expiry" },
   photoUploadLabel: { ko: "사진 촬영/업로드", en: "Take or upload photo" },
+  priceLabel: { ko: "가격", en: "Price" },
+  currencyLabel: { ko: "통화", en: "Currency" },
   barcodeSectionTitle: { ko: "바코드 / 식별자", en: "Barcodes / identifiers" },
   noBarcodes: { ko: "등록된 바코드가 없습니다.", en: "No barcodes yet." },
   sourceGenerated: { ko: "자체발급", en: "Self-issued" },
@@ -143,6 +193,21 @@ const dict = {
   },
   subOf: { ko: "{name} 하위", en: "under {name}" },
   itemCount: { ko: "아이템 {n}개", en: "{n} items" },
+
+  // trash
+  trashTitle: { ko: "휴지통", en: "Trash" },
+  trashHint: {
+    ko: "삭제된 아이템은 30일간 여기 보관되고, 그 이후 자동으로 영구 삭제됩니다.",
+    en: "Deleted items stay here for 30 days, then are permanently removed automatically.",
+  },
+  trashEmpty: { ko: "휴지통이 비어 있습니다.", en: "Trash is empty." },
+  restoreButton: { ko: "복구", en: "Restore" },
+  permanentDeleteButton: { ko: "영구 삭제", en: "Delete permanently" },
+  confirmPermanentDelete: {
+    ko: '"{name}"을(를) 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.',
+    en: 'Permanently delete "{name}"? This cannot be undone.',
+  },
+  itemRestoredToast: { ko: "아이템이 복구되었습니다", en: "Item restored" },
 
   // categories
   categoriesTitle: { ko: "카테고리", en: "Categories" },
@@ -234,16 +299,18 @@ const dict = {
 
   // backup / more
   moreTitle: { ko: "더보기", en: "More" },
+  settingsLabel: { ko: "설정", en: "Settings" },
+  menuGroupStructure: { ko: "구조 관리", en: "Structure" },
+  menuGroupActions: { ko: "작업 · 기록", en: "Actions & records" },
+  menuGroupAccount: { ko: "계정 · 연동", en: "Account & integrations" },
   myAccountTitle: { ko: "내 계정", en: "My account" },
   logoutButton: { ko: "로그아웃", en: "Log out" },
   screenTitle: { ko: "화면", en: "Display" },
   themeLabel: { ko: "테마", en: "Theme" },
   notificationsTitle: { ko: "알림", en: "Notifications" },
-  menuTitle: { ko: "메뉴", en: "Menu" },
   manageLocations: { ko: "위치 관리", en: "Manage locations" },
   manageCategories: { ko: "카테고리 관리", en: "Manage categories" },
   printLabels: { ko: "라벨 인쇄", en: "Print labels" },
-  stockHistory: { ko: "재고 이력", en: "Stock history" },
   familyAccounts: { ko: "가족 구성원 계정", en: "Family accounts" },
   integrationSettings: { ko: "외부 연동 설정", en: "Integration settings" },
   backupRestoreTitle: { ko: "백업 / 복원", en: "Backup / restore" },

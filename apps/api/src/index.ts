@@ -16,6 +16,7 @@ import { labelRoutes } from "./routes/labels.js";
 import { movementRoutes } from "./routes/movements.js";
 import { pushRoutes } from "./routes/push.js";
 import { startExpiryNotificationJob } from "./jobs/expiryNotifications.js";
+import { startTrashPurgeJob } from "./jobs/trashPurge.js";
 
 const app = Fastify({ logger: true });
 
@@ -73,6 +74,7 @@ await app.register(movementRoutes, { prefix: "/api/movements" });
 await app.register(pushRoutes, { prefix: "/api/push" });
 
 startExpiryNotificationJob();
+startTrashPurgeJob();
 
 const port = Number(process.env.PORT ?? 8080);
 

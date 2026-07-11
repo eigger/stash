@@ -149,6 +149,19 @@ textarea {
   width: 100%;
 }
 
+/* native select는 padding만으로는 브라우저 기본 높이가 input과 맞지 않는 경우가 많다 */
+select {
+  height: 48px;
+  min-height: 48px;
+  padding: 12px 36px 12px 12px;
+  line-height: 1.2;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
 button {
   font-size: 1rem;
   padding: 12px 16px;
@@ -295,7 +308,15 @@ button:disabled {
 }
 
 .bottom-nav .icon {
-  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-nav .icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .bottom-nav .scan-tab {
@@ -317,7 +338,9 @@ button:disabled {
 .scanner-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  max-width: 360px;
+  margin: 0 auto;
+  aspect-ratio: 4 / 3;
   border-radius: 16px;
   overflow: hidden;
   background: #000;
@@ -327,6 +350,82 @@ button:disabled {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.scanner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.scan-box {
+  position: relative;
+  width: 68%;
+  aspect-ratio: 1 / 1;
+}
+
+.scan-box .corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+}
+
+.scan-box .corner.tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 8px;
+}
+
+.scan-box .corner.tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  border-top-right-radius: 8px;
+}
+
+.scan-box .corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  border-bottom-left-radius: 8px;
+}
+
+.scan-box .corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 8px;
+}
+
+.scan-box .scan-line {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4ade80, transparent);
+  box-shadow: 0 0 6px 1px rgba(74, 222, 128, 0.8);
+  animation: scan-line-move 2s ease-in-out infinite;
+}
+
+@keyframes scan-line-move {
+  0% {
+    top: 4%;
+  }
+  50% {
+    top: 96%;
+  }
+  100% {
+    top: 4%;
+  }
 }
 
 .scan-hint {

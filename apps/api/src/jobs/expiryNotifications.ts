@@ -54,10 +54,10 @@ export async function sendExpiryNotifications(): Promise<void> {
 
   const [expiring, warrantyExpiring] = await Promise.all([
     prisma.item.findMany({
-      where: { expiryDate: { not: null, lte: threshold }, expiryNotifiedAt: null },
+      where: { deletedAt: null, expiryDate: { not: null, lte: threshold }, expiryNotifiedAt: null },
     }),
     prisma.item.findMany({
-      where: { warrantyExpiresAt: { not: null, lte: threshold }, warrantyNotifiedAt: null },
+      where: { deletedAt: null, warrantyExpiresAt: { not: null, lte: threshold }, warrantyNotifiedAt: null },
     }),
   ]);
 

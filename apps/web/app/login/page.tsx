@@ -43,7 +43,7 @@ export default function LoginPage() {
       }
       const data = await res.json();
       await login(data.token);
-      router.push("/scan");
+      router.push("/");
     } catch {
       setError(t("connectionError"));
     } finally {
@@ -86,7 +86,7 @@ export default function LoginPage() {
       }
       const data = await loginRes.json();
       await login(data.token);
-      router.push("/scan");
+      router.push("/");
     } catch {
       setError(t("connectionError"));
     } finally {

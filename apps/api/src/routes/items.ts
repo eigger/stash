@@ -6,6 +6,7 @@ import { fireInventoryWebhook, isInventoryWebhookConfigured } from "../lib/webho
 import { guessSymbology } from "../lib/barcodeSymbology.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
 import { deleteUploadedFile } from "../lib/uploads.js";
+import { encodeCsvRow, parseCsv } from "../lib/csv.js";
 
 const ITEM_INCLUDE = {
   barcodes: true,
@@ -13,19 +14,38 @@ const ITEM_INCLUDE = {
   category: true,
 } as const;
 
+const CSV_COLUMNS = [
+  "name",
+  "quantity",
+  "unit",
+  "minQuantity",
+  "locationName",
+  "categoryName",
+  "expiryDate",
+  "warrantyExpiresAt",
+  "price",
+  "currency",
+  "notes",
+] as const;
+
 export async function itemRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
   app.get("/", async (request) => {
-    const { q, locationId, categoryId, lowStock, expiringSoon } = request.query as {
+    const { q, locationId, categoryId, lowStock, expiringSoon, sort, page, pageSize, limit, trashed } = request.query as {
       q?: string;
       locationId?: string;
       categoryId?: string;
       lowStock?: string;
       expiringSoon?: string;
+      sort?: string;
+      page?: string;
+      pageSize?: string;
+      limit?: string;
+      trashed?: string;
     };
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { deletedAt: trashed === "true" ? { not: null } : null };
     if (q) where.name = { contains: q, mode: "insensitive" };
     if (locationId) where.locationId = locationId;
     if (categoryId) where.categoryId = categoryId;
@@ -49,7 +69,180 @@ export async function itemRoutes(app: FastifyInstance) {
       items = items.filter((i) => i.minQuantity != null && i.quantity <= i.minQuantity);
     }
 
+    // 목록 규모상 DB 정렬 대신 fetch 후 JS에서 정렬 — 위 lowStock 필터와 같은 방식.
+    if (sort === "quantityAsc") {
+      items = [...items].sort((a, b) => a.quantity - b.quantity);
+    } else if (sort === "expiryAsc") {
+      items = [...items].sort((a, b) => {
+        if (!a.expiryDate && !b.expiryDate) return 0;
+        if (!a.expiryDate) return 1;
+        if (!b.expiryDate) return -1;
+        return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+      });
+    }
+
+    // page가 있으면 { items, total } 형태로, 없으면 기존처럼 배열 그대로 반환 —
+    // 대시보드의 lowStock/expiringSoon 호출 등 기존 호출부와 하위호환을 유지한다.
+    if (page) {
+      const total = items.length;
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const size = Math.min(100, Math.max(1, parseInt(pageSize ?? "30", 10) || 30));
+      const paged = items.slice((pageNum - 1) * size, pageNum * size);
+      return { items: paged, total, page: pageNum, pageSize: size };
+    }
+
+    if (limit) {
+      const n = Math.max(1, parseInt(limit, 10) || 0);
+      items = items.slice(0, n);
+    }
+
     return items;
+  });
+
+  // 전체 백업(tar.gz)과 별개로, 스프레드시트로 대량 입력/이전할 때 쓰는 가벼운 내보내기.
+  app.get("/export.csv", async (request, reply) => {
+    const items = await prisma.item.findMany({
+      where: { deletedAt: null },
+      include: ITEM_INCLUDE,
+      orderBy: { createdAt: "desc" },
+    });
+    let csv = encodeCsvRow([...CSV_COLUMNS]);
+    for (const item of items) {
+      csv += encodeCsvRow([
+        item.name,
+        item.quantity,
+        item.unit,
+        item.minQuantity,
+        item.location?.name,
+        item.category?.name,
+        item.expiryDate ? item.expiryDate.toISOString().slice(0, 10) : "",
+        item.warrantyExpiresAt ? item.warrantyExpiresAt.toISOString().slice(0, 10) : "",
+        item.price,
+        item.currency,
+        item.notes,
+      ]);
+    }
+    reply
+      .header("Content-Type", "text/csv; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="stash_items_${new Date().toISOString().slice(0, 10)}.csv"`)
+      .send(csv);
+  });
+
+  // CSV 대량 등록 — 위치/카테고리는 이름으로 받아서 없으면 새로 만든다(최상위 항목으로).
+  // 바코드는 CSV로 다루지 않는다 — 심볼로지 판별 등은 스캔으로 등록하는 게 훨씬 안전하다.
+  app.post("/import.csv", async (request, reply) => {
+    const file = await request.file();
+    if (!file) return reply.code(400).send({ error: "CSV 파일이 없습니다." });
+    const text = (await file.toBuffer()).toString("utf8");
+    const rows = parseCsv(text);
+    if (rows.length === 0) return reply.code(400).send({ error: "빈 CSV 파일입니다." });
+
+    const header = rows[0].map((h) => h.trim());
+    const nameIdx = header.indexOf("name");
+    if (nameIdx === -1) {
+      return reply.code(400).send({ error: "CSV 헤더에 name 컬럼이 없습니다." });
+    }
+    const colIdx = (col: string) => header.indexOf(col);
+    const cell = (row: string[], col: string) => {
+      const idx = colIdx(col);
+      return idx !== -1 ? row[idx]?.trim() : undefined;
+    };
+
+    const locationCache = new Map<string, string>();
+    const categoryCache = new Map<string, string>();
+
+    async function resolveLocationId(name: string | undefined): Promise<string | null> {
+      if (!name) return null;
+      if (locationCache.has(name)) return locationCache.get(name)!;
+      const loc =
+        (await prisma.location.findFirst({ where: { name, parentId: null } })) ??
+        (await prisma.location.create({ data: { name } }));
+      locationCache.set(name, loc.id);
+      return loc.id;
+    }
+
+    async function resolveCategoryId(name: string | undefined): Promise<string | null> {
+      if (!name) return null;
+      if (categoryCache.has(name)) return categoryCache.get(name)!;
+      const cat =
+        (await prisma.category.findFirst({ where: { name, parentId: null } })) ??
+        (await prisma.category.create({ data: { name } }));
+      categoryCache.set(name, cat.id);
+      return cat.id;
+    }
+
+    // CSV는 사람이 스프레드시트로 편집하므로 잘못된 값(문자, 음수, 이상한 날짜)이 섞여
+    // 들어오기 쉽다. 파싱 실패는 "그 칸만 비움"으로 처리해 한 칸 오타로 행 전체가 날아가지
+    // 않게 한다 — 특히 price는 NaN이 들어가면 /stats 합계 전체가 NaN이 되므로 반드시 막는다.
+    const parseIntOrNull = (raw: string | undefined): number | null => {
+      if (!raw) return null;
+      const n = parseInt(raw, 10);
+      return Number.isFinite(n) ? Math.max(0, n) : null;
+    };
+    const parseFloatOrNull = (raw: string | undefined): number | null => {
+      if (!raw) return null;
+      const n = parseFloat(raw);
+      return Number.isFinite(n) ? n : null;
+    };
+    const parseDateOrNull = (raw: string | undefined): Date | null => {
+      if (!raw) return null;
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    let created = 0;
+    const errors: string[] = [];
+
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const name = row[nameIdx]?.trim();
+      if (!name) {
+        errors.push(`${r + 1}행: name이 비어 있어 건너뜀`);
+        continue;
+      }
+      try {
+        await prisma.item.create({
+          data: {
+            name,
+            quantity: parseIntOrNull(cell(row, "quantity")) ?? 1,
+            unit: cell(row, "unit") || null,
+            minQuantity: parseIntOrNull(cell(row, "minQuantity")),
+            locationId: await resolveLocationId(cell(row, "locationName")),
+            categoryId: await resolveCategoryId(cell(row, "categoryName")),
+            expiryDate: parseDateOrNull(cell(row, "expiryDate")),
+            warrantyExpiresAt: parseDateOrNull(cell(row, "warrantyExpiresAt")),
+            price: parseFloatOrNull(cell(row, "price")),
+            currency: cell(row, "currency") || null,
+            notes: cell(row, "notes") || null,
+            createdById: request.user.sub,
+          },
+        });
+        created++;
+      } catch (err: any) {
+        errors.push(`${r + 1}행 (${name}): ${err.message || err}`);
+      }
+    }
+
+    return { created, errors };
+  });
+
+  // 대시보드의 "총 자산가치" 집계용 — price/quantity/currency만 select해서 전체 아이템을
+  // 무겁게 include하지 않고 가볍게 계산한다. currency는 자유 텍스트라 통화별로 따로 합산.
+  app.get("/stats", async () => {
+    const rows = await prisma.item.findMany({
+      where: { deletedAt: null },
+      select: { price: true, quantity: true, currency: true },
+    });
+    let totalItems = 0;
+    const totalValueByCurrency: Record<string, number> = {};
+    for (const row of rows) {
+      totalItems += row.quantity;
+      if (row.price != null) {
+        const currency = row.currency || "?";
+        totalValueByCurrency[currency] = (totalValueByCurrency[currency] ?? 0) + row.price * row.quantity;
+      }
+    }
+    return { totalItems, totalValueByCurrency };
   });
 
   app.get("/:id", async (request, reply) => {
@@ -136,8 +329,29 @@ export async function itemRoutes(app: FastifyInstance) {
     return item;
   });
 
+  // 소프트 삭제 — 목록/스캔에서 즉시 안 보이게만 하고, 실수로 지운 걸 휴지통에서
+  // 되돌릴 수 있게 한다. 첨부파일은 영구 삭제(/permanent) 때만 정리한다.
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const item = await prisma.item.update({ where: { id }, data: { deletedAt: new Date() } });
+    return reply.send(item);
+  });
+
+  app.post("/:id/restore", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await prisma.item.update({ where: { id }, data: { deletedAt: null }, include: ITEM_INCLUDE });
+    return item;
+  });
+
+  // 휴지통에서의 영구 삭제 — 아직 휴지통에 없는(deletedAt이 null인) 아이템은 거부한다.
+  // 즉, 반드시 "삭제 → 휴지통 → 영구 삭제" 두 단계를 거치게 해서 실수를 막는다.
+  app.delete("/:id/permanent", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await prisma.item.findUnique({ where: { id } });
+    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item.deletedAt) {
+      return reply.code(400).send({ error: "휴지통에 있는 아이템만 영구 삭제할 수 있습니다." });
+    }
     // Prisma의 onDelete: Cascade는 DB 행만 지우고 디스크의 실제 파일은 안 건드리므로,
     // 아이템을 지우기 전에 첨부파일을 먼저 조회해서 파일도 함께 정리한다.
     const attachments = await prisma.attachment.findMany({ where: { itemId: id } });
@@ -197,15 +411,38 @@ export async function itemRoutes(app: FastifyInstance) {
 
     if (existingBarcode) {
       const item = existingBarcode.item;
-      const nextQuantity = item.quantity + delta;
+      const nextQuantity = Math.max(0, item.quantity + delta);
+      const appliedDelta = nextQuantity - item.quantity;
+
+      // 실제 수량 변화가 없으면(이미 0인데 소비 스캔) 아무 것도 바꾸지 않는다 —
+      // 휴지통 복구도, 0-delta 이동 이력도 남기지 않고 현재 상태 그대로 돌려준다.
+      if (appliedDelta === 0) {
+        return { item, matched: true, created: false };
+      }
+
       const [updated] = await prisma.$transaction([
-        prisma.item.update({ where: { id: item.id }, data: { quantity: nextQuantity }, include: ITEM_INCLUDE }),
+        prisma.item.update({
+          where: { id: item.id },
+          // 휴지통에 있던 아이템의 바코드를 다시 스캔해 수량이 바뀌면 "이거 아직 있다"는
+          // 뜻이므로 되살린다 — 소비 모드로 실제 차감될 때도 마찬가지.
+          data: { quantity: nextQuantity, deletedAt: null },
+          include: ITEM_INCLUDE,
+        }),
         prisma.stockMovement.create({
-          data: { itemId: item.id, delta, reason: "RESTOCK", userId: request.user.sub },
+          data: {
+            itemId: item.id,
+            delta: appliedDelta,
+            reason: delta > 0 ? "RESTOCK" : "CONSUME",
+            userId: request.user.sub,
+          },
         }),
       ]);
       void fireInventoryWebhook("item.updated", updated);
       return { item: updated, matched: true, created: false };
+    }
+
+    if (delta < 0) {
+      return reply.code(400).send({ error: "등록되지 않은 바코드는 소비 처리할 수 없습니다. 먼저 입고로 스캔해 등록하세요." });
     }
 
     const lookup = await resolveProduct(barcodeValue);
@@ -235,9 +472,14 @@ export async function itemRoutes(app: FastifyInstance) {
         // 아이템으로 대신 수량을 올린다 (일반 매칭 분기와 동일하게 처리).
         const race = await prisma.barcode.findUnique({ where: { value: barcodeValue }, include: { item: true } });
         if (race) {
-          const nextQuantity = race.item.quantity + delta;
+          // 이 분기는 delta > 0 만 도달한다(위에서 음수 delta는 이미 거부됨).
+          const nextQuantity = Math.max(0, race.item.quantity + delta);
           const [updated] = await prisma.$transaction([
-            prisma.item.update({ where: { id: race.item.id }, data: { quantity: nextQuantity }, include: ITEM_INCLUDE }),
+            prisma.item.update({
+              where: { id: race.item.id },
+              data: { quantity: nextQuantity, deletedAt: null },
+              include: ITEM_INCLUDE,
+            }),
             prisma.stockMovement.create({
               data: { itemId: race.item.id, delta, reason: "RESTOCK", userId: request.user.sub },
             }),

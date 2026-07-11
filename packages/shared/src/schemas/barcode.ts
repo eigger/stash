@@ -20,7 +20,11 @@ export const barcodeInputSchema = z.object({
 
 export const scanInputSchema = z.object({
   barcodeValue: z.string().min(1),
-  delta: z.number().int().positive().default(1),
+  delta: z
+    .number()
+    .int()
+    .refine((n) => n !== 0, { message: "delta must not be zero" })
+    .default(1),
 });
 
 export type BarcodeInput = z.infer<typeof barcodeInputSchema>;
