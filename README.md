@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.5.3**
+> Current release: **v0.6.0**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -22,7 +22,8 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 - Nested locations (rooms / shelves / boxes) rendered as an indented tree, and categories
 - Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes — name and unit are inline-editable right on the item detail page. Photos can be taken *or* picked from the gallery right in the "add manually" form (auto-resized on upload), and price uses a default currency (KRW/USD, set once in Settings) instead of typing it on every item
 - Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), a Matter pairing code, or a manually-entered serial number (with inline copy explaining Matter codes are an identifier only, not real commissioning), all as one barcode type
-- Asset mode alongside quantity tracking — flip an item to **Asset** to track a single physical device: condition (new / in use / needs repair / retired), a serial-number barcode entry, and a maintenance-history log (date, description, cost). Asset items hide the quantity stepper/low-stock fields, are excluded from shopping-list/low-stock logic, and scanning an asset's barcode just confirms a match instead of adjusting quantity
+- Asset mode alongside quantity tracking — flip an item to **Asset** to track a single physical device: condition (new / in use / needs repair / retired), a serial-number barcode entry, and a maintenance-history log (date, description, cost). Asset items hide the quantity stepper/low-stock fields, are excluded from shopping-list/low-stock logic, and scanning an asset's barcode redirects to its detail page instead of adjusting quantity
+- File attachments for receipts, manuals, and warranties — upload and store multiple PDF or image documents per item/asset, with image auto-resizing on upload
 - Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code. Tuned for real-world speed/accuracy (format hints, higher resolution, continuous autofocus), with an audible beep, haptic buzz, and a low-light flash toggle. A newly auto-created item gets a quick inline sheet to set its location/threshold on the spot
 - Pluggable external product lookup (Open Food Facts, UPCItemDB, Naver Shopping) — pick which providers to use per barcode scan, or turn lookup off entirely
 - Dashboard: total inventory value, low-stock and expiring-soon items front and center, plus a first-run onboarding checklist (location, notifications, public URL)
@@ -61,7 +62,7 @@ Every item with search, **location** / **category** filters, and **sort** (recen
 
 ### 4. Item detail
 
-Edit quantity, location, category, low-stock threshold, expiry / warranty dates, price, and photo. Attach existing barcodes, issue an internal QR, add a Matter code, or send a print request. Quantity history is listed below.
+Edit quantity, location, category, low-stock threshold, expiry / warranty dates, price, and photo. Attach existing barcodes, issue an internal QR, add a Matter code, send a print request, or upload attachments (receipts, manuals, warranties as PDF/images). Quantity, maintenance, and audit history are listed below.
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/04-item-detail.png" alt="Item detail" width="340" />
 

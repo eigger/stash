@@ -500,7 +500,13 @@ export async function itemRoutes(app: FastifyInstance) {
       // 자산(ASSET)은 수량 개념이 없다 — 스캔은 "이 기기 맞음, 확인됨"으로만 응답하고
       // 수량/이력을 건드리지 않는다. 자산 등록은 항상 느린 수동 폼을 거치게 한다.
       if (item.itemType === "ASSET") {
-        return { item, matched: true, created: false };
+        const updated = await prisma.item.update({
+          where: { id: item.id },
+          data: { lastAuditedAt: new Date() },
+          include: ITEM_INCLUDE,
+        });
+        void fireInventoryWebhook("item.updated", updated);
+        return { item: updated, matched: true, created: false };
       }
 
       const nextQuantity = Math.max(0, item.quantity + delta);
@@ -517,7 +523,7 @@ export async function itemRoutes(app: FastifyInstance) {
           where: { id: item.id },
           // 휴지통에 있던 아이템의 바코드를 다시 스캔해 수량이 바뀌면 "이거 아직 있다"는
           // 뜻이므로 되살린다 — 소비 모드로 실제 차감될 때도 마찬가지.
-          data: { quantity: nextQuantity, deletedAt: null },
+          data: { quantity: nextQuantity, deletedAt: null, lastAuditedAt: new Date() },
           include: ITEM_INCLUDE,
         }),
         prisma.stockMovement.create({
@@ -547,6 +553,7 @@ export async function itemRoutes(app: FastifyInstance) {
           photoUrl: lookup.imageUrl,
           notes: lookup.brand ? `브랜드: ${lookup.brand}` : undefined,
           createdById: request.user.sub,
+          lastAuditedAt: new Date(),
           barcodes: {
             create: {
               value: barcodeValue,
@@ -569,7 +576,7 @@ export async function itemRoutes(app: FastifyInstance) {
           const [updated] = await prisma.$transaction([
             prisma.item.update({
               where: { id: race.item.id },
-              data: { quantity: nextQuantity, deletedAt: null },
+              data: { quantity: nextQuantity, deletedAt: null, lastAuditedAt: new Date() },
               include: ITEM_INCLUDE,
             }),
             prisma.stockMovement.create({

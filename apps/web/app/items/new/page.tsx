@@ -27,6 +27,7 @@ export default function NewItemPage() {
   const [recentCategoryIds] = useState(() => loadRecentIds(RECENT_CATEGORIES_KEY));
   const [name, setName] = useState("");
   const [itemType, setItemType] = useState<ItemType>("CONSUMABLE");
+  const [generateAndPrint, setGenerateAndPrint] = useState(false);
   const [condition, setCondition] = useState<ItemCondition>("NEW");
   const [quantity, setQuantity] = useState(1);
   const [locationId, setLocationId] = useState("");
@@ -165,6 +166,19 @@ export default function NewItemPage() {
       }
 
       show(t("itemCreatedToast"), "success");
+
+      if (generateAndPrint) {
+        try {
+          if (!barcodeValue.trim()) {
+            await apiJson(`/api/items/${item.id}/barcodes/generate`, { method: "POST" });
+          }
+          await apiJson(`/api/items/${item.id}/print-request`, { method: "POST" });
+          show(t("qrAndPrintSuccessToast"), "success");
+        } catch (err: any) {
+          show(t("qrAndPrintFailToast", { msg: err.message }), "error");
+        }
+      }
+
       router.push(`/items/${item.id}`);
     } catch (err: any) {
       show(t("itemCreateFailToast", { msg: err.message }), "error");
@@ -197,14 +211,20 @@ export default function NewItemPage() {
           <button
             type="button"
             className={`chip${itemType === "CONSUMABLE" ? " chip-selected" : ""}`}
-            onClick={() => setItemType("CONSUMABLE")}
+            onClick={() => {
+              setItemType("CONSUMABLE");
+              setGenerateAndPrint(false);
+            }}
           >
             {t("itemTypeConsumable")}
           </button>
           <button
             type="button"
             className={`chip${itemType === "ASSET" ? " chip-selected" : ""}`}
-            onClick={() => setItemType("ASSET")}
+            onClick={() => {
+              setItemType("ASSET");
+              setGenerateAndPrint(true);
+            }}
           >
             {t("itemTypeAsset")}
           </button>
@@ -346,6 +366,14 @@ export default function NewItemPage() {
           <span className="badge badge-muted">{currency}</span>
         </div>
         <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+        <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginTop: 8, marginBottom: 8 }}>
+          <input
+            type="checkbox"
+            checked={generateAndPrint}
+            onChange={(e) => setGenerateAndPrint(e.target.checked)}
+          />
+          {t("generateAndPrintQrCheckbox")}
+        </label>
         <button type="submit" disabled={saving || !name.trim()}>
           {saving ? t("saving") : t("save")}
         </button>

@@ -117,6 +117,7 @@ model Item {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
+  lastAuditedAt      DateTime?
 
   location           Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
   category           Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)

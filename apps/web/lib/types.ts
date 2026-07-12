@@ -91,6 +91,7 @@ export interface Item {
   condition: ItemCondition | null;
   createdAt: string;
   updatedAt: string;
+  lastAuditedAt: string | null;
   location: Location | null;
   category: Category | null;
   barcodes: Barcode[];

@@ -141,6 +141,19 @@ export default function ItemDetailPage() {
     }
   }
 
+  async function generateAndPrintQr() {
+    if (!item) return;
+    try {
+      await apiJson(`/api/items/${item.id}/barcodes/generate`, { method: "POST" });
+      await apiJson(`/api/items/${item.id}/print-request`, { method: "POST" });
+      show(t("qrAndPrintSuccessToast"), "success");
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+      await refresh().catch(() => null);
+    }
+  }
+
   async function requestPrint() {
     if (!item) return;
     try {
@@ -199,6 +212,13 @@ export default function ItemDetailPage() {
       await refresh();
     } catch (err: any) {
       show(err.message, "error");
+    }
+  }
+
+  function copyToClipboard(text: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      show(t("copiedToClipboardToast"), "success");
     }
   }
 
@@ -314,6 +334,8 @@ export default function ItemDetailPage() {
 
   if (loading || !user || busy || !item) return <main className="container"><p>{t("loading")}</p></main>;
 
+  const totalMaintCost = item.maintenanceRecords?.reduce((sum, r) => sum + (r.cost || 0), 0) || 0;
+
   return (
     <main className="container">
       <div className="page-header">
@@ -332,6 +354,35 @@ export default function ItemDetailPage() {
           {t("delete")}
         </button>
       </div>
+
+      {item.lastAuditedAt && (
+        <p className="meta" style={{ marginTop: -8, marginBottom: 12 }}>
+          {t("lastAuditedLabel")}: {formatDateTime(item.lastAuditedAt)}
+        </p>
+      )}
+
+      {item.attachments && item.attachments.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          {item.attachments.map((a, idx) => (
+            <a
+              key={a.id}
+              href={`${API_URL}/api/attachments/file/${a.filePath}`}
+              target="_blank"
+              rel="noreferrer"
+              className="badge badge-muted"
+              style={{
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 10px",
+              }}
+            >
+              📎 {a.mimeType === "application/pdf" ? `${t("attachmentTypePdf")} #${idx + 1}` : `${t("attachmentTypeImage")} #${idx + 1}`}
+            </a>
+          ))}
+        </div>
+      )}
 
       {item.photoUrl && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -486,7 +537,7 @@ export default function ItemDetailPage() {
         )}
         {item.barcodes.map((b) => (
           <div key={b.id} className="tree-row">
-            <div className="tree-row-value">
+            <div className="tree-row-value" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span className="badge badge-muted">
                 {b.source === "GENERATED"
                   ? t("sourceGenerated")
@@ -496,7 +547,23 @@ export default function ItemDetailPage() {
                       ? t("sourceSerial")
                       : t("sourceExisting")}
               </span>{" "}
-              {b.value}
+              <span>{b.value}</span>
+              <button
+                type="button"
+                className="secondary"
+                style={{
+                  padding: "2px 6px",
+                  fontSize: "0.75rem",
+                  minHeight: "auto",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  cursor: "pointer",
+                }}
+                onClick={() => copyToClipboard(b.value)}
+                title={t("copyToClipboardButton")}
+              >
+                📋
+              </button>
             </div>
             <div className="tree-row-actions">
               <a href={`${API_URL}/api/barcodes/${b.id}/label.png`} target="_blank" rel="noreferrer">
@@ -510,8 +577,12 @@ export default function ItemDetailPage() {
         ))}
 
         <div className="fab-row">
-          <button onClick={generateQr}>{t("generateQrButton")}</button>
-          {item.barcodes.length > 0 && (
+          {item.barcodes.length === 0 ? (
+            <>
+              <button onClick={generateQr}>{t("generateQrButton")}</button>
+              <button className="secondary" onClick={generateAndPrintQr}>{t("generateAndPrintQrButton")}</button>
+            </>
+          ) : (
             <button className="secondary" onClick={requestPrint}>
               {t("printRequestButton")}
             </button>
@@ -575,7 +646,14 @@ export default function ItemDetailPage() {
 
       {item.itemType === "ASSET" && (
         <div className="card">
-          <h2 style={{ marginTop: 0 }}>{t("maintenanceSectionTitle")}</h2>
+          <h2 style={{ marginTop: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>{t("maintenanceSectionTitle")}</span>
+            {totalMaintCost > 0 && (
+              <span className="meta" style={{ fontSize: "0.9rem", fontWeight: "normal" }}>
+                {t("totalMaintenanceCostLabel")}: {totalMaintCost} {item.currency || ""}
+              </span>
+            )}
+          </h2>
           {(!item.maintenanceRecords || item.maintenanceRecords.length === 0) && (
             <p className="meta">{t("noMaintenanceRecords")}</p>
           )}
