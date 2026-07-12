@@ -128,7 +128,12 @@ docker compose -f docker-compose.prod.yml up -d
 
 ### 5. 재고 이벤트 웹훅 (선택)
 
-**설정 → 외부 연동**에서 URL 하나를 등록합니다. 아이템 생성 / 수정 / 스캔 시, 그리고 명시적 출력 요청 시 Stash가 JSON 페이로드를 POST하므로, 받는 자동화(예: BLE 라벨 프린터를 제어하는 Home Assistant)가 자체적으로 라벨을 렌더링할 수 있습니다. 페이로드 형식은 [`docs/ROADMAP.md`](./docs/ROADMAP.md) 참고.
+**설정 → 외부 연동**에서 URL 하나를 등록합니다. 아이템 생성 / 수정 / 스캔 시, 그리고 명시적 출력 요청 시 Stash가 JSON 페이로드를 POST하므로, 받는 자동화(예: Home Assistant)가 자체적으로 라벨을 렌더링할 수 있습니다. 페이로드 형식은 [`docs/ROADMAP.md`](./docs/ROADMAP.md) 참고.
+
+Home Assistant를 통해 다음을 사용할 수 있습니다.
+
+- [hass-niimbot](https://github.com/eigger/hass-niimbot) — Niimbot 라벨 인쇄
+- [hass-gicisky](https://github.com/eigger/hass-gicisky) — Gicisky 전자 라벨(재고 관리, 유통기한 표기 등)
 
 ---
 

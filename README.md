@@ -128,7 +128,12 @@ From **More → Manage locations / categories**, create where things live (rooms
 
 ### 5. Inventory webhook (optional)
 
-Set one URL under **Settings → Integrations**. Stash POSTs a JSON payload on item create / update / scan and on an explicit print request, so a receiving automation (e.g. Home Assistant driving a BLE label printer) can render its own label. See [`docs/ROADMAP.md`](./docs/ROADMAP.md) for the payload shape.
+Set one URL under **Settings → Integrations**. Stash POSTs a JSON payload on item create / update / scan and on an explicit print request, so a receiving automation (e.g. Home Assistant) can render its own label. See [`docs/ROADMAP.md`](./docs/ROADMAP.md) for the payload shape.
+
+Via Home Assistant you can use:
+
+- [hass-niimbot](https://github.com/eigger/hass-niimbot) — Niimbot label printing
+- [hass-gicisky](https://github.com/eigger/hass-gicisky) — Gicisky electronic labels (inventory display, expiry dates, and more)
 
 ---
 
