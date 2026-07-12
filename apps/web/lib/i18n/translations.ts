@@ -122,6 +122,8 @@ const dict = {
     ko: "대기 중이던 스캔 {synced}건 전송 완료 (거부됨 {rejected}건)",
     en: "Synced {synced} queued scan(s) ({rejected} rejected)",
   },
+  scanAssetMatchedToast: { ko: "자산 확인됨: {name}", en: "Asset confirmed: {name}" },
+  scanAssetMatchedLabel: { ko: "자산 확인됨", en: "Asset confirmed" },
 
   // item card
   noLocation: { ko: "위치 없음", en: "No location" },
@@ -135,6 +137,7 @@ const dict = {
   searchPlaceholder: { ko: "이름 검색", en: "Search by name" },
   allLocations: { ko: "모든 위치", en: "All locations" },
   allCategories: { ko: "모든 카테고리", en: "All categories" },
+  allItemTypes: { ko: "전체(소모품+자산)", en: "All types" },
   noItems: { ko: "등록된 아이템이 없습니다.", en: "No items yet." },
   loadMoreButton: { ko: "더 보기", en: "Load more" },
   sortRecent: { ko: "최근 등록순", en: "Recently added" },
@@ -183,6 +186,13 @@ const dict = {
   currencyPlaceholder: { ko: "통화 (예: KRW)", en: "Currency (e.g. USD)" },
   itemCreatedToast: { ko: "아이템이 등록되었습니다", en: "Item added" },
   itemCreateFailToast: { ko: "등록 실패: {msg}", en: "Failed to add: {msg}" },
+  itemTypeConsumable: { ko: "소모품", en: "Consumable" },
+  itemTypeAsset: { ko: "자산(기기)", en: "Asset" },
+  conditionLabel: { ko: "상태", en: "Condition" },
+  conditionNew: { ko: "신품", en: "New" },
+  conditionInUse: { ko: "사용중", en: "In use" },
+  conditionNeedsRepair: { ko: "수리필요", en: "Needs repair" },
+  conditionRetired: { ko: "폐기", en: "Retired" },
 
   // item detail
   qrIssuedToast: { ko: "내부 QR 라벨이 발급되었습니다", en: "Internal QR label issued" },
@@ -217,6 +227,7 @@ const dict = {
   sourceGenerated: { ko: "자체발급", en: "Self-issued" },
   sourceMatter: { ko: "Matter", en: "Matter" },
   sourceExisting: { ko: "기존", en: "Existing" },
+  sourceSerial: { ko: "시리얼번호", en: "Serial number" },
   viewLabel: { ko: "라벨보기", en: "View label" },
   generateQrButton: { ko: "내부 QR 발급", en: "Issue internal QR" },
   printRequestButton: { ko: "프린터로 출력", en: "Send to printer" },
@@ -226,6 +237,7 @@ const dict = {
   },
   addExistingBarcode: { ko: "기존 바코드로 추가", en: "Add as existing barcode" },
   addMatterBarcode: { ko: "Matter 코드로 추가", en: "Add as Matter code" },
+  addSerialNumberButton: { ko: "시리얼번호로 추가", en: "Add as serial number" },
   matterCodeHint: {
     ko: "스마트홈 기기의 Matter 페어링 코드를 이 아이템의 식별자로만 저장합니다 — 실제 기기 연동(커미셔닝)은 지원하지 않고, 나중에 이 코드로 다시 찾을 수 있게 하는 용도입니다.",
     en: "Stores a smart-home device's Matter pairing code purely as an identifier for this item — it does not perform actual device commissioning, it just lets you look the device back up by this code later.",
@@ -233,6 +245,11 @@ const dict = {
   movementHistoryTitle: { ko: "수량 변경 이력", en: "Quantity history" },
   viewAll: { ko: "전체 보기", en: "View all" },
   notesLabel: { ko: "메모", en: "Notes" },
+  maintenanceSectionTitle: { ko: "정비 이력", en: "Maintenance history" },
+  noMaintenanceRecords: { ko: "등록된 정비 이력이 없습니다.", en: "No maintenance records yet." },
+  maintenanceDescriptionPlaceholder: { ko: "정비 내용 (예: 배터리 교체)", en: "Description (e.g. battery replacement)" },
+  maintenanceCostPlaceholder: { ko: "비용 (선택)", en: "Cost (optional)" },
+  addMaintenanceRecordButton: { ko: "정비 이력 추가", en: "Add record" },
 
   // locations
   locationsTitle: { ko: "위치", en: "Locations" },

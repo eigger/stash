@@ -27,18 +27,29 @@ export async function backupRoutes(app: FastifyInstance) {
     const archivePath = path.join(UPLOAD_DIR, `${tempDirName}.tar.gz`);
 
     try {
-      const [users, locations, categories, items, barcodes, movements, attachments, lookupCache, pushSubscriptions] =
-        await Promise.all([
-          prisma.user.findMany(),
-          prisma.location.findMany(),
-          prisma.category.findMany(),
-          prisma.item.findMany(),
-          prisma.barcode.findMany(),
-          prisma.stockMovement.findMany(),
-          prisma.attachment.findMany(),
-          prisma.productLookupCache.findMany(),
-          prisma.pushSubscription.findMany(),
-        ]);
+      const [
+        users,
+        locations,
+        categories,
+        items,
+        barcodes,
+        movements,
+        attachments,
+        lookupCache,
+        pushSubscriptions,
+        maintenanceRecords,
+      ] = await Promise.all([
+        prisma.user.findMany(),
+        prisma.location.findMany(),
+        prisma.category.findMany(),
+        prisma.item.findMany(),
+        prisma.barcode.findMany(),
+        prisma.stockMovement.findMany(),
+        prisma.attachment.findMany(),
+        prisma.productLookupCache.findMany(),
+        prisma.pushSubscription.findMany(),
+        prisma.maintenanceRecord.findMany(),
+      ]);
 
       const dbData = {
         users,
@@ -50,6 +61,7 @@ export async function backupRoutes(app: FastifyInstance) {
         attachments,
         lookupCache,
         pushSubscriptions,
+        maintenanceRecords,
       };
 
       await mkdir(filesDir, { recursive: true });
@@ -111,6 +123,7 @@ export async function backupRoutes(app: FastifyInstance) {
         await tx.pushSubscription.deleteMany();
         await tx.stockMovement.deleteMany();
         await tx.attachment.deleteMany();
+        await tx.maintenanceRecord.deleteMany();
         await tx.barcode.deleteMany();
         await tx.item.deleteMany();
         await tx.category.deleteMany();
@@ -125,6 +138,7 @@ export async function backupRoutes(app: FastifyInstance) {
         if (dbData.barcodes?.length) await tx.barcode.createMany({ data: dbData.barcodes });
         if (dbData.attachments?.length) await tx.attachment.createMany({ data: dbData.attachments });
         if (dbData.movements?.length) await tx.stockMovement.createMany({ data: dbData.movements });
+        if (dbData.maintenanceRecords?.length) await tx.maintenanceRecord.createMany({ data: dbData.maintenanceRecords });
         if (dbData.lookupCache?.length) await tx.productLookupCache.createMany({ data: dbData.lookupCache });
         if (dbData.pushSubscriptions?.length) await tx.pushSubscription.createMany({ data: dbData.pushSubscriptions });
       });

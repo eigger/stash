@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.4.0**
+> Current release: **v0.5.0**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -21,7 +21,8 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
 - Nested locations (rooms / shelves / boxes) rendered as an indented tree, and categories
 - Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes — name and unit are inline-editable right on the item detail page
-- Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), or a Matter pairing code (with inline copy explaining it's an identifier only, not real commissioning), all as one barcode type
+- Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), a Matter pairing code, or a manually-entered serial number (with inline copy explaining Matter codes are an identifier only, not real commissioning), all as one barcode type
+- Asset mode alongside quantity tracking — flip an item to **Asset** to track a single physical device: condition (new / in use / needs repair / retired), a serial-number barcode entry, and a maintenance-history log (date, description, cost). Asset items hide the quantity stepper/low-stock fields, are excluded from shopping-list/low-stock logic, and scanning an asset's barcode just confirms a match instead of adjusting quantity
 - Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code. Tuned for real-world speed/accuracy (format hints, higher resolution, continuous autofocus), with an audible beep, haptic buzz, and a low-light flash toggle. A newly auto-created item gets a quick inline sheet to set its location/threshold on the spot
 - Pluggable external product lookup (Open Food Facts, UPCItemDB, Naver Shopping) — pick which providers to use per barcode scan, or turn lookup off entirely
 - Dashboard: total inventory value, low-stock and expiring-soon items front and center, plus a first-run onboarding checklist (location, notifications, public URL)

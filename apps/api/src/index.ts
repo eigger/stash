@@ -14,6 +14,7 @@ import { settingsRoutes } from "./routes/settings.js";
 import { backupRoutes } from "./routes/backup.js";
 import { labelRoutes } from "./routes/labels.js";
 import { movementRoutes } from "./routes/movements.js";
+import { maintenanceRoutes } from "./routes/maintenance.js";
 import { pushRoutes } from "./routes/push.js";
 import { startExpiryNotificationJob } from "./jobs/expiryNotifications.js";
 import { startTrashPurgeJob } from "./jobs/trashPurge.js";
@@ -79,6 +80,7 @@ await app.register(settingsRoutes, { prefix: "/api/settings" });
 await app.register(backupRoutes, { prefix: "/api/backup" });
 await app.register(labelRoutes, { prefix: "/api/labels" });
 await app.register(movementRoutes, { prefix: "/api/movements" });
+await app.register(maintenanceRoutes, { prefix: "/api" });
 await app.register(pushRoutes, { prefix: "/api/push" });
 
 startExpiryNotificationJob();

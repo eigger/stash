@@ -11,7 +11,7 @@ import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import type { TranslationKey } from "../../../lib/i18n/translations";
-import type { Item, Location, Category, StockMovementReason } from "../../../lib/types";
+import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason } from "../../../lib/types";
 
 const REASON_KEY: Record<StockMovementReason, TranslationKey> = {
   RESTOCK: "reasonRestock",
@@ -37,6 +37,9 @@ export default function ItemDetailPage() {
   const [torchOn, setTorchOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const [maintDate, setMaintDate] = useState("");
+  const [maintDescription, setMaintDescription] = useState("");
+  const [maintCost, setMaintCost] = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -175,9 +178,53 @@ export default function ItemDetailPage() {
     }
   }
 
+  async function addSerialNumber() {
+    if (!item || !manualBarcode.trim()) return;
+    try {
+      await apiJson(`/api/items/${item.id}/barcodes`, {
+        method: "POST",
+        body: JSON.stringify({ value: manualBarcode.trim(), source: "SERIAL", symbology: "OTHER" }),
+      });
+      setManualBarcode("");
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
   async function removeBarcode(barcodeId: string) {
     try {
       await apiJson(`/api/barcodes/${barcodeId}`, { method: "DELETE" });
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
+  async function addMaintenanceRecord() {
+    if (!item || !maintDate || !maintDescription.trim()) return;
+    try {
+      await apiJson(`/api/items/${item.id}/maintenance`, {
+        method: "POST",
+        body: JSON.stringify({
+          date: maintDate,
+          description: maintDescription.trim(),
+          cost: maintCost ? Number(maintCost) : null,
+          currency: item.currency || null,
+        }),
+      });
+      setMaintDate("");
+      setMaintDescription("");
+      setMaintCost("");
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
+  async function removeMaintenanceRecord(recordId: string) {
+    try {
+      await apiJson(`/api/maintenance/${recordId}`, { method: "DELETE" });
       await refresh();
     } catch (err: any) {
       show(err.message, "error");
@@ -258,18 +305,50 @@ export default function ItemDetailPage() {
       )}
 
       <div className="card">
-        <div className="qty-stepper" style={{ justifyContent: "center", marginBottom: 8 }}>
-          <button className="secondary" onClick={() => adjustQuantity(-1)}>-</button>
-          <span style={{ fontSize: "1.4rem", minWidth: 40, textAlign: "center" }}>{item.quantity}</span>
-          <button className="secondary" onClick={() => adjustQuantity(1)}>+</button>
-          <input
-            className="unit-input"
-            placeholder={t("unitPlaceholder")}
-            value={item.unit ?? ""}
-            onChange={(e) => setItem({ ...item, unit: e.target.value })}
-            onBlur={(e) => updateField("unit", e.target.value.trim() || null)}
-          />
+        <div className="chip-row" style={{ marginBottom: 8 }}>
+          <button
+            type="button"
+            className={`chip${item.itemType === "CONSUMABLE" ? " chip-selected" : ""}`}
+            onClick={() => updateField("itemType", "CONSUMABLE")}
+          >
+            {t("itemTypeConsumable")}
+          </button>
+          <button
+            type="button"
+            className={`chip${item.itemType === "ASSET" ? " chip-selected" : ""}`}
+            onClick={() => updateField("itemType", "ASSET")}
+          >
+            {t("itemTypeAsset")}
+          </button>
         </div>
+
+        {item.itemType === "CONSUMABLE" ? (
+          <div className="qty-stepper" style={{ justifyContent: "center", marginBottom: 8 }}>
+            <button className="secondary" onClick={() => adjustQuantity(-1)}>-</button>
+            <span style={{ fontSize: "1.4rem", minWidth: 40, textAlign: "center" }}>{item.quantity}</span>
+            <button className="secondary" onClick={() => adjustQuantity(1)}>+</button>
+            <input
+              className="unit-input"
+              placeholder={t("unitPlaceholder")}
+              value={item.unit ?? ""}
+              onChange={(e) => setItem({ ...item, unit: e.target.value })}
+              onBlur={(e) => updateField("unit", e.target.value.trim() || null)}
+            />
+          </div>
+        ) : (
+          <label>
+            {t("conditionLabel")}
+            <select
+              value={item.condition ?? "NEW"}
+              onChange={(e) => updateField("condition", e.target.value as ItemCondition)}
+            >
+              <option value="NEW">{t("conditionNew")}</option>
+              <option value="IN_USE">{t("conditionInUse")}</option>
+              <option value="NEEDS_REPAIR">{t("conditionNeedsRepair")}</option>
+              <option value="RETIRED">{t("conditionRetired")}</option>
+            </select>
+          </label>
+        )}
 
         <label>
           {t("locationLabel")}
@@ -295,33 +374,37 @@ export default function ItemDetailPage() {
           </select>
         </label>
 
-        <label>
-          {t("minQuantityLabel")}
-          <input
-            type="number"
-            min={0}
-            value={item.minQuantity ?? ""}
-            onChange={(e) => updateField("minQuantity", e.target.value ? Number(e.target.value) : null)}
-          />
-        </label>
+        {item.itemType === "CONSUMABLE" && (
+          <>
+            <label>
+              {t("minQuantityLabel")}
+              <input
+                type="number"
+                min={0}
+                value={item.minQuantity ?? ""}
+                onChange={(e) => updateField("minQuantity", e.target.value ? Number(e.target.value) : null)}
+              />
+            </label>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row" }}>
-          <input
-            type="checkbox"
-            checked={item.wanted}
-            onChange={(e) => updateField("wanted", e.target.checked)}
-          />
-          {t("addToShoppingListLabel")}
-        </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row" }}>
+              <input
+                type="checkbox"
+                checked={item.wanted}
+                onChange={(e) => updateField("wanted", e.target.checked)}
+              />
+              {t("addToShoppingListLabel")}
+            </label>
 
-        <label>
-          {t("expiryLabel")}
-          <input
-            type="date"
-            value={item.expiryDate?.slice(0, 10) ?? ""}
-            onChange={(e) => updateField("expiryDate", e.target.value || null)}
-          />
-        </label>
+            <label>
+              {t("expiryLabel")}
+              <input
+                type="date"
+                value={item.expiryDate?.slice(0, 10) ?? ""}
+                onChange={(e) => updateField("expiryDate", e.target.value || null)}
+              />
+            </label>
+          </>
+        )}
 
         <label>
           {t("warrantyLabel")}
@@ -367,7 +450,13 @@ export default function ItemDetailPage() {
           <div key={b.id} className="tree-row">
             <div className="tree-row-value">
               <span className="badge badge-muted">
-                {b.source === "GENERATED" ? t("sourceGenerated") : b.source === "MATTER" ? t("sourceMatter") : t("sourceExisting")}
+                {b.source === "GENERATED"
+                  ? t("sourceGenerated")
+                  : b.source === "MATTER"
+                    ? t("sourceMatter")
+                    : b.source === "SERIAL"
+                      ? t("sourceSerial")
+                      : t("sourceExisting")}
               </span>{" "}
               {b.value}
             </div>
@@ -437,9 +526,66 @@ export default function ItemDetailPage() {
               {t("addMatterBarcode")}
             </button>
           </div>
+          {item.itemType === "ASSET" && (
+            <button className="secondary" onClick={addSerialNumber} style={{ marginTop: 8 }}>
+              {t("addSerialNumberButton")}
+            </button>
+          )}
           <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
         </div>
       </div>
+
+      {item.itemType === "ASSET" && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>{t("maintenanceSectionTitle")}</h2>
+          {(!item.maintenanceRecords || item.maintenanceRecords.length === 0) && (
+            <p className="meta">{t("noMaintenanceRecords")}</p>
+          )}
+          {item.maintenanceRecords?.map((r: MaintenanceRecord) => (
+            <div key={r.id} className="tree-row">
+              <div className="tree-row-value">
+                <span className="badge badge-muted">{r.date.slice(0, 10)}</span> {r.description}
+                {r.cost != null && (
+                  <span className="meta">
+                    {" "}
+                    ({r.cost}
+                    {r.currency ? ` ${r.currency}` : ""})
+                  </span>
+                )}
+              </div>
+              <div className="tree-row-actions">
+                <button className="secondary" onClick={() => removeMaintenanceRecord(r.id)}>
+                  {t("delete")}
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="form" style={{ marginTop: 12 }}>
+            <input type="date" value={maintDate} onChange={(e) => setMaintDate(e.target.value)} />
+            <input
+              placeholder={t("maintenanceDescriptionPlaceholder")}
+              value={maintDescription}
+              onChange={(e) => setMaintDescription(e.target.value)}
+            />
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder={t("maintenanceCostPlaceholder")}
+              value={maintCost}
+              onChange={(e) => setMaintCost(e.target.value)}
+            />
+            <button
+              type="button"
+              className="secondary"
+              onClick={addMaintenanceRecord}
+              disabled={!maintDate || !maintDescription.trim()}
+            >
+              {t("addMaintenanceRecordButton")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {item.movements && item.movements.length > 0 && (
         <div className="card">

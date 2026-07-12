@@ -9,7 +9,7 @@ export const barcodeSymbologySchema = z.enum([
   "OTHER",
 ]);
 
-export const barcodeSourceSchema = z.enum(["GENERATED", "EXISTING", "MATTER"]);
+export const barcodeSourceSchema = z.enum(["GENERATED", "EXISTING", "MATTER", "SERIAL"]);
 
 export const barcodeInputSchema = z.object({
   value: z.string().min(1),
