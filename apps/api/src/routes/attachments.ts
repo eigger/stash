@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
 import { processImageForStorage } from "../lib/imageProcessing.js";
 import { UPLOAD_DIR, deleteUploadedFile } from "../lib/uploads.js";
+import { t } from "../lib/i18n.js";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
@@ -15,15 +16,15 @@ export async function attachmentRoutes(app: FastifyInstance) {
   // 아이템 사진, 영수증, 설명서/보증서 등을 아이템에 첨부한다.
   app.post("/", async (request, reply) => {
     const { itemId } = request.query as { itemId?: string };
-    if (!itemId) return reply.code(400).send({ error: "itemId가 필요합니다" });
+    if (!itemId) return reply.code(400).send({ error: t("itemIdRequired", request.locale) });
 
     const item = await prisma.item.findUnique({ where: { id: itemId } });
-    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
 
     const file = await request.file();
-    if (!file) return reply.code(400).send({ error: "파일이 없습니다" });
+    if (!file) return reply.code(400).send({ error: t("fileRequired", request.locale) });
     if (!ALLOWED_MIME.has(file.mimetype)) {
-      return reply.code(400).send({ error: `지원하지 않는 파일 형식: ${file.mimetype}` });
+      return reply.code(400).send({ error: t("unsupportedFileType", request.locale, { mimetype: file.mimetype }) });
     }
 
     await mkdir(UPLOAD_DIR, { recursive: true });
@@ -39,7 +40,7 @@ export async function attachmentRoutes(app: FastifyInstance) {
         mimeType = processed.mimeType;
         ext = processed.ext;
       } catch {
-        return reply.code(400).send({ error: "손상되었거나 지원하지 않는 이미지 파일입니다" });
+        return reply.code(400).send({ error: t("invalidImageFile", request.locale) });
       }
     }
 
@@ -59,8 +60,8 @@ export async function attachmentRoutes(app: FastifyInstance) {
     const filePath = path.join(UPLOAD_DIR, safeName);
 
     const attachment = await prisma.attachment.findFirst({ where: { filePath: safeName } });
-    if (!attachment) return reply.code(404).send({ error: "file not found" });
-    if (!existsSync(filePath)) return reply.code(404).send({ error: "file on disk not found" });
+    if (!attachment) return reply.code(404).send({ error: t("fileNotFound", request.locale) });
+    if (!existsSync(filePath)) return reply.code(404).send({ error: t("fileMissingOnDisk", request.locale) });
 
     reply.type(attachment.mimeType);
     return createReadStream(filePath);
@@ -69,7 +70,7 @@ export async function attachmentRoutes(app: FastifyInstance) {
   app.delete("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const attachment = await prisma.attachment.delete({ where: { id } }).catch(() => null);
-    if (!attachment) return reply.code(404).send({ error: "attachment not found" });
+    if (!attachment) return reply.code(404).send({ error: t("attachmentNotFound", request.locale) });
     await deleteUploadedFile(attachment.filePath);
     return reply.code(204).send();
   });

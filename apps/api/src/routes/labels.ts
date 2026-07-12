@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { renderLabelSheetPdf } from "../lib/labelSheet.js";
+import { t } from "../lib/i18n.js";
 
 const sheetInputSchema = z.object({
   itemIds: z.array(z.string()).min(1),
@@ -29,7 +30,7 @@ export async function labelRoutes(app: FastifyInstance) {
       .filter((e): e is NonNullable<typeof e> => e !== null);
 
     if (entries.length === 0) {
-      return reply.code(400).send({ error: "선택한 아이템 중 바코드가 있는 항목이 없습니다" });
+      return reply.code(400).send({ error: t("noBarcodedItemsSelected", request.locale) });
     }
 
     const pdf = await renderLabelSheetPdf(entries);

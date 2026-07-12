@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.2.0**
+> Current release: **v0.3.0**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -22,15 +22,17 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 - Nested locations (rooms / shelves / boxes) and categories
 - Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes
 - Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), or a Matter pairing code, all as one barcode type
-- Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; unknown barcodes auto-create an item (external lookup pre-fills name/photo)
+- Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code
+- Pluggable external product lookup (Open Food Facts, UPCItemDB, Naver Shopping) — pick which providers to use per barcode scan, or turn lookup off entirely
 - Dashboard: total inventory value, low-stock and expiring-soon items front and center
 - Shopping list built from low-stock items — buy, tap `+`, and it drops off automatically
-- Item list with search, location/category filters, sort, and pagination
-- CSV import / export for bulk entry and spreadsheet round-trips
+- Item list with search, location/category filters, sort, pagination, and remembers your last filter/sort; bulk-select items to move location/category or delete at once
+- Undo on delete — deleting an item shows an inline **Undo** toast
+- CSV import / export (including barcode values) for bulk entry and spreadsheet round-trips
 - Label printing: single PNG, or a bundled A4 label-sheet PDF (Korean names render via a bundled Noto Sans KR subset)
-- Expiry / warranty push notifications (Web Push)
+- Expiry / warranty push notifications, plus a weekly low-stock digest (Web Push)
 - Trash (soft delete) with restore and 30-day auto-purge
-- Offline-friendly PWA: cached app shell and an offline scan queue that auto-syncs when back online
+- Offline-friendly PWA: cached app shell, home-screen shortcuts for Scan / Add item, and an offline scan queue that auto-syncs when back online
 - Outbound inventory webhook for printer / label-device automations (e.g. Home Assistant)
 - Admin / general roles, first-admin bootstrap, backup/restore, ko/en i18n, light/dark theme
 

@@ -1,5 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { itemInputSchema, itemUpdateSchema, quantityAdjustSchema, scanInputSchema } from "@stash/shared";
+import {
+  itemBulkDeleteSchema,
+  itemBulkUpdateSchema,
+  itemInputSchema,
+  itemUpdateSchema,
+  quantityAdjustSchema,
+  scanInputSchema,
+} from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
 import { resolveProduct } from "../lib/barcodeLookup/index.js";
 import { fireInventoryWebhook, isInventoryWebhookConfigured } from "../lib/webhook.js";
@@ -7,6 +14,7 @@ import { guessSymbology } from "../lib/barcodeSymbology.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
 import { deleteUploadedFile } from "../lib/uploads.js";
 import { encodeCsvRow, parseCsv } from "../lib/csv.js";
+import { t } from "../lib/i18n.js";
 
 const ITEM_INCLUDE = {
   barcodes: true,
@@ -25,6 +33,7 @@ const CSV_COLUMNS = [
   "warrantyExpiresAt",
   "price",
   "currency",
+  "barcodeValue",
   "notes",
 ] as const;
 
@@ -108,6 +117,7 @@ export async function itemRoutes(app: FastifyInstance) {
     });
     let csv = encodeCsvRow([...CSV_COLUMNS]);
     for (const item of items) {
+      const primaryBarcode = item.barcodes.find((b) => b.isPrimary) ?? item.barcodes[0];
       csv += encodeCsvRow([
         item.name,
         item.quantity,
@@ -119,6 +129,7 @@ export async function itemRoutes(app: FastifyInstance) {
         item.warrantyExpiresAt ? item.warrantyExpiresAt.toISOString().slice(0, 10) : "",
         item.price,
         item.currency,
+        primaryBarcode?.value,
         item.notes,
       ]);
     }
@@ -132,15 +143,15 @@ export async function itemRoutes(app: FastifyInstance) {
   // 바코드는 CSV로 다루지 않는다 — 심볼로지 판별 등은 스캔으로 등록하는 게 훨씬 안전하다.
   app.post("/import.csv", async (request, reply) => {
     const file = await request.file();
-    if (!file) return reply.code(400).send({ error: "CSV 파일이 없습니다." });
+    if (!file) return reply.code(400).send({ error: t("csvFileRequired", request.locale) });
     const text = (await file.toBuffer()).toString("utf8");
     const rows = parseCsv(text);
-    if (rows.length === 0) return reply.code(400).send({ error: "빈 CSV 파일입니다." });
+    if (rows.length === 0) return reply.code(400).send({ error: t("emptyCsvFile", request.locale) });
 
     const header = rows[0].map((h) => h.trim());
     const nameIdx = header.indexOf("name");
     if (nameIdx === -1) {
-      return reply.code(400).send({ error: "CSV 헤더에 name 컬럼이 없습니다." });
+      return reply.code(400).send({ error: t("csvMissingNameColumn", request.locale) });
     }
     const colIdx = (col: string) => header.indexOf(col);
     const cell = (row: string[], col: string) => {
@@ -197,9 +208,10 @@ export async function itemRoutes(app: FastifyInstance) {
       const row = rows[r];
       const name = row[nameIdx]?.trim();
       if (!name) {
-        errors.push(`${r + 1}행: name이 비어 있어 건너뜀`);
+        errors.push(t("csvRowNameEmpty", request.locale, { row: r + 1 }));
         continue;
       }
+      const barcodeValue = cell(row, "barcodeValue");
       try {
         await prisma.item.create({
           data: {
@@ -215,11 +227,27 @@ export async function itemRoutes(app: FastifyInstance) {
             currency: cell(row, "currency") || null,
             notes: cell(row, "notes") || null,
             createdById: request.user.sub,
+            barcodes: barcodeValue
+              ? {
+                  create: {
+                    value: barcodeValue,
+                    symbology: guessSymbology(barcodeValue),
+                    source: "EXISTING",
+                    isPrimary: true,
+                  },
+                }
+              : undefined,
           },
         });
         created++;
       } catch (err: any) {
-        errors.push(`${r + 1}행 (${name}): ${err.message || err}`);
+        // 바코드 값은 전역 유니크라, CSV 여러 행에 같은 값이 있거나 이미 다른 아이템에
+        // 등록된 값이면 이 행만 실패한다 — 나머지 행은 계속 진행된다.
+        if (isUniqueConstraintError(err)) {
+          errors.push(t("csvRowBarcodeConflict", request.locale, { row: r + 1, name }));
+        } else {
+          errors.push(t("csvRowError", request.locale, { row: r + 1, name, detail: err.message || err }));
+        }
       }
     }
 
@@ -255,7 +283,7 @@ export async function itemRoutes(app: FastifyInstance) {
         movements: { orderBy: { occurredAt: "desc" }, take: 20 },
       },
     });
-    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
     return item;
   });
 
@@ -271,7 +299,7 @@ export async function itemRoutes(app: FastifyInstance) {
     if (barcodeValue) {
       const existing = await prisma.barcode.findUnique({ where: { value: barcodeValue } });
       if (existing) {
-        return reply.code(409).send({ error: "이미 다른 아이템에 등록된 바코드 값입니다" });
+        return reply.code(409).send({ error: t("barcodeAlreadyRegistered", request.locale) });
       }
     }
 
@@ -302,6 +330,33 @@ export async function itemRoutes(app: FastifyInstance) {
     const created = await prisma.item.findUnique({ where: { id: item.id }, include: ITEM_INCLUDE });
     if (created) void fireInventoryWebhook("item.updated", created);
     return reply.code(201).send(created);
+  });
+
+  // 목록에서 여러 아이템을 골라 위치/카테고리를 한 번에 바꾼다. locationId/categoryId를
+  // 아예 안 보내면 그 필드는 그대로 두고, null을 보내면 "위치 없음/카테고리 없음"으로 지운다.
+  app.patch("/bulk", async (request, reply) => {
+    const parsed = itemBulkUpdateSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    const { itemIds, locationId, categoryId } = parsed.data;
+    const data: { locationId?: string | null; categoryId?: string | null } = {};
+    if (locationId !== undefined) data.locationId = locationId;
+    if (categoryId !== undefined) data.categoryId = categoryId;
+
+    const result = await prisma.item.updateMany({ where: { id: { in: itemIds } }, data });
+    return { updated: result.count };
+  });
+
+  // 목록에서 여러 아이템을 골라 한 번에 휴지통으로 보낸다 — 단건 삭제와 같은 소프트 삭제.
+  app.post("/bulk-delete", async (request, reply) => {
+    const parsed = itemBulkDeleteSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
+
+    const result = await prisma.item.updateMany({
+      where: { id: { in: parsed.data.itemIds } },
+      data: { deletedAt: new Date() },
+    });
+    return { deleted: result.count };
   });
 
   app.patch("/:id", async (request, reply) => {
@@ -337,7 +392,7 @@ export async function itemRoutes(app: FastifyInstance) {
     return reply.send(item);
   });
 
-  app.post("/:id/restore", async (request, reply) => {
+  app.post("/:id/restore", async (request) => {
     const { id } = request.params as { id: string };
     const item = await prisma.item.update({ where: { id }, data: { deletedAt: null }, include: ITEM_INCLUDE });
     return item;
@@ -348,9 +403,9 @@ export async function itemRoutes(app: FastifyInstance) {
   app.delete("/:id/permanent", async (request, reply) => {
     const { id } = request.params as { id: string };
     const item = await prisma.item.findUnique({ where: { id } });
-    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
     if (!item.deletedAt) {
-      return reply.code(400).send({ error: "휴지통에 있는 아이템만 영구 삭제할 수 있습니다." });
+      return reply.code(400).send({ error: t("onlyTrashedCanBePurged", request.locale) });
     }
     // Prisma의 onDelete: Cascade는 DB 행만 지우고 디스크의 실제 파일은 안 건드리므로,
     // 아이템을 지우기 전에 첨부파일을 먼저 조회해서 파일도 함께 정리한다.
@@ -368,7 +423,7 @@ export async function itemRoutes(app: FastifyInstance) {
 
     const { delta, reason } = parsed.data;
     const item = await prisma.item.findUnique({ where: { id } });
-    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
 
     const nextQuantity = Math.max(0, item.quantity + delta);
     const [updated] = await prisma.$transaction([
@@ -386,12 +441,12 @@ export async function itemRoutes(app: FastifyInstance) {
   app.post("/:id/print-request", async (request, reply) => {
     const { id } = request.params as { id: string };
     if (!(await isInventoryWebhookConfigured())) {
-      return reply.code(400).send({ error: "웹훅이 설정되지 않았습니다. 설정 > 외부 연동에서 등록하세요." });
+      return reply.code(400).send({ error: t("webhookNotConfigured", request.locale) });
     }
     const item = await prisma.item.findUnique({ where: { id }, include: ITEM_INCLUDE });
-    if (!item) return reply.code(404).send({ error: "item not found" });
+    if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
     if (item.barcodes.length === 0) {
-      return reply.code(400).send({ error: "이 아이템에는 바코드가 없습니다. 먼저 라벨을 발급하세요." });
+      return reply.code(400).send({ error: t("itemHasNoBarcode", request.locale) });
     }
     await fireInventoryWebhook("item.print_requested", item);
     return { ok: true };
@@ -442,7 +497,7 @@ export async function itemRoutes(app: FastifyInstance) {
     }
 
     if (delta < 0) {
-      return reply.code(400).send({ error: "등록되지 않은 바코드는 소비 처리할 수 없습니다. 먼저 입고로 스캔해 등록하세요." });
+      return reply.code(400).send({ error: t("cannotConsumeUnregisteredBarcode", request.locale) });
     }
 
     const lookup = await resolveProduct(barcodeValue);

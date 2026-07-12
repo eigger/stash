@@ -149,6 +149,13 @@ textarea {
   width: 100%;
 }
 
+/* 위 input 공통 규칙(width:100%, padding:12px)이 체크박스에도 적용되면 늘어나 보이므로 되돌린다 */
+input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border-radius: 4px;
+}
+
 /* native select는 padding만으로는 브라우저 기본 높이가 input과 맞지 않는 경우가 많다 */
 select {
   height: 48px;
@@ -270,6 +277,29 @@ button:disabled {
 .badge-muted {
   background: var(--color-surface-hover);
   color: var(--color-text-muted);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -6px 0 2px;
+}
+
+.chip {
+  width: auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.chip-selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .dashboard-section h2 {
@@ -457,11 +487,27 @@ button:disabled {
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--color-toast-bg);
   color: #fff;
   padding: 10px 16px;
   border-radius: 999px;
   font-size: 0.9rem;
+  pointer-events: auto;
+}
+
+.toast-action {
+  flex-shrink: 0;
+  width: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .toast-error {

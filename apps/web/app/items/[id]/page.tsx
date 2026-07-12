@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
@@ -27,10 +28,42 @@ export default function ItemDetailPage() {
   const [busy, setBusy] = useState(true);
   const [manualBarcode, setManualBarcode] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
+
+  // 기존 바코드/Matter 페어링 코드 둘 다 박스나 기기에 QR로 찍혀있는 경우가 많아서, 손으로
+  // 타이핑하는 대신 카메라로 스캔해 입력란만 채울 수 있게 한다(등록 자체는 아래 버튼으로).
+  useEffect(() => {
+    if (!scanning || !videoRef.current) return;
+    const reader = new BrowserMultiFormatReader();
+    let cancelled = false;
+
+    reader
+      .decodeFromConstraints({ video: { facingMode: "environment" } }, videoRef.current, (result) => {
+        if (cancelled || !result) return;
+        setManualBarcode(result.getText());
+        setScanning(false);
+      })
+      .then((controls) => {
+        controlsRef.current = controls;
+      })
+      .catch(() => {
+        setScanError(t("cameraError"));
+        setScanning(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controlsRef.current?.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanning]);
 
   async function refresh() {
     const data = await apiJson<Item>(`/api/items/${id}`);
@@ -154,9 +187,23 @@ export default function ItemDetailPage() {
   async function handleDelete() {
     if (!item) return;
     if (!confirm(t("confirmDeleteItem", { name: item.name }))) return;
+    const { id, name } = item;
     try {
-      await apiJson(`/api/items/${item.id}`, { method: "DELETE" });
+      await apiJson(`/api/items/${id}`, { method: "DELETE" });
       router.push("/items");
+      // 목록으로 돌아간 뒤에도 실행취소를 누를 수 있도록, 복구 후에는 새로고침해서
+      // 방금 삭제된 아이템이 이미 빠진 채로 떠 있던 목록 상태를 다시 맞춰준다.
+      show(t("itemDeletedUndoToast", { name }), "info", {
+        label: t("undoButton"),
+        onClick: async () => {
+          try {
+            await apiJson(`/api/items/${id}/restore`, { method: "POST" });
+            window.location.href = "/items";
+          } catch (err: any) {
+            show(t("restoreFailToast", { msg: err.message }), "error");
+          }
+        },
+      });
     } catch (err: any) {
       show(err.message, "error");
     }
@@ -297,11 +344,34 @@ export default function ItemDetailPage() {
           )}
         </div>
         <div className="form" style={{ marginTop: 12 }}>
-          <input
-            placeholder={t("manualBarcodePlaceholder")}
-            value={manualBarcode}
-            onChange={(e) => setManualBarcode(e.target.value)}
-          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              placeholder={t("manualBarcodePlaceholder")}
+              value={manualBarcode}
+              onChange={(e) => setManualBarcode(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="secondary" onClick={() => setScanning((s) => !s)}>
+              {scanning ? t("cancelScanButton") : t("scanBarcodeButton")}
+            </button>
+          </div>
+
+          {scanning && (
+            <div className="scanner-frame" style={{ maxWidth: 280 }}>
+              <video ref={videoRef} muted playsInline />
+              <div className="scanner-overlay">
+                <div className="scan-box">
+                  <span className="corner tl" />
+                  <span className="corner tr" />
+                  <span className="corner bl" />
+                  <span className="corner br" />
+                  <span className="scan-line" />
+                </div>
+              </div>
+            </div>
+          )}
+          {scanError && <p className="error-text">{scanError}</p>}
+
           <div style={{ display: "flex", gap: 8 }}>
             <button className="secondary" onClick={addManualBarcode} style={{ flex: 1 }}>
               {t("addExistingBarcode")}

@@ -30,6 +30,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (init.body && !headers.has("Content-Type") && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
+  // 서버 에러 메시지도 앱에서 고른 언어(브라우저/OS 설정이 아니라)로 받기 위해 매 요청에 싣는다.
+  const locale = typeof window !== "undefined" ? localStorage.getItem("stash_locale") : null;
+  if (locale) headers.set("X-Locale", locale);
   return fetch(`${API_URL}${path}`, { ...init, headers, cache: "no-store" });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api";
 import { useToast } from "../lib/toast-context";
 import { useLocale } from "../lib/i18n/locale-context";
@@ -13,14 +13,23 @@ function daysUntil(dateStr: string): number {
 interface Props {
   item: Item;
   onChange?: (updated: Item) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 // 목록에서 바로 수량을 조정할 수 있는 카드 — 상세 페이지까지 들어가지 않아도 되게 하는 게 핵심.
-export function ItemCard({ item, onChange }: Props) {
+export function ItemCard({ item, onChange, selectable, selected, onToggleSelect }: Props) {
   const { show } = useToast();
   const { t } = useLocale();
   const [current, setCurrent] = useState(item);
   const [busy, setBusy] = useState(false);
+
+  // 목록 새로고침(필터 변경, 일괄 작업 등)으로 부모가 새 item을 내려주면 그 값을 반영한다 —
+  // 안 그러면 마운트 시점 값만 영원히 붙들고 있어 이후 변경이 카드에 안 보이게 된다.
+  useEffect(() => {
+    setCurrent(item);
+  }, [item]);
 
   async function adjust(delta: number) {
     if (busy) return;
@@ -44,6 +53,15 @@ export function ItemCard({ item, onChange }: Props) {
 
   return (
     <div className="card item-card">
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={onToggleSelect}
+          aria-label={current.name}
+          style={{ alignSelf: "center", marginRight: 4 }}
+        />
+      )}
       {current.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img className="thumb" src={current.photoUrl} alt="" />

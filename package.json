@@ -1,7 +1,7 @@
 {
   "name": "stash",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -14,6 +14,10 @@
     "prisma:generate": "npm run prisma:generate -w apps/api",
     "prisma:migrate": "npm run prisma:migrate -w apps/api",
     "seed": "npm run seed -w apps/api",
-    "test": "npm run build:shared && npm run test -w apps/api"
+    "test": "npm run build:shared && npm run test -w apps/api && npm run test -w apps/web",
+    "lint": "npm run lint -w apps/api && npm run lint -w apps/web"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.61.1"
   }
 }

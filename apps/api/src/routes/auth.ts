@@ -7,6 +7,7 @@ import {
   updateProfileSchema,
 } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
+import { t } from "../lib/i18n.js";
 
 export async function authRoutes(app: FastifyInstance) {
   app.get("/bootstrap/status", async () => {
@@ -20,7 +21,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const userCount = await prisma.user.count();
     if (userCount > 0) {
-      return reply.code(409).send({ error: "bootstrap disabled" });
+      return reply.code(409).send({ error: t("bootstrapDisabled", request.locale) });
     }
 
     const { name, email, password } = parsed.data;
@@ -43,10 +44,10 @@ export async function authRoutes(app: FastifyInstance) {
 
       const { email, password } = parsed.data;
       const user = await prisma.user.findUnique({ where: { email } });
-      if (!user) return reply.code(401).send({ error: "invalid credentials" });
+      if (!user) return reply.code(401).send({ error: t("invalidCredentials", request.locale) });
 
       const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) return reply.code(401).send({ error: "invalid credentials" });
+      if (!valid) return reply.code(401).send({ error: t("invalidCredentials", request.locale) });
 
       const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: "90d" });
       return {
@@ -93,7 +94,7 @@ export async function authRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { id } = request.params as { id: string };
       if (id === request.user.sub) {
-        return reply.code(400).send({ error: "본인 계정은 삭제할 수 없습니다" });
+        return reply.code(400).send({ error: t("cannotDeleteSelf", request.locale) });
       }
       await prisma.user.delete({ where: { id } });
       return reply.code(204).send();
@@ -113,13 +114,13 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (newPassword) {
       if (!currentPassword) {
-        return reply.code(400).send({ error: "currentPassword is required" });
+        return reply.code(400).send({ error: t("currentPasswordRequired", request.locale) });
       }
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) return reply.code(404).send({ error: "user not found" });
+      if (!user) return reply.code(404).send({ error: t("userNotFound", request.locale) });
 
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-      if (!valid) return reply.code(400).send({ error: "incorrect currentPassword" });
+      if (!valid) return reply.code(400).send({ error: t("incorrectCurrentPassword", request.locale) });
 
       updateData.passwordHash = await bcrypt.hash(newPassword, 10);
     }
