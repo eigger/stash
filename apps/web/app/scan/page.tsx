@@ -264,6 +264,29 @@ export default function ScanPage() {
     }
   }
 
+  async function undoLastScan() {
+    if (!lastResult) return;
+    const { item, created } = lastResult;
+    try {
+      if (created) {
+        await apiJson(`/api/items/${item.id}`, { method: "DELETE" });
+        show(t("scanUndoCreatedToast", { name: item.name }), "success");
+      } else {
+        const reverseDelta = lastMode === "consume" ? 1 : -1;
+        const barcodeValue = lastScanRef.current?.value;
+        if (!barcodeValue) return;
+        await apiJson("/api/items/scan", {
+          method: "POST",
+          body: JSON.stringify({ barcodeValue, delta: reverseDelta }),
+        });
+        show(t("scanUndoSuccessToast", { name: item.name }), "success");
+      }
+      setLastResult(null);
+    } catch (err: any) {
+      show(t("scanUndoFailToast", { msg: err.message }), "error");
+    }
+  }
+
   async function handleManualSubmit(e: FormEvent) {
     e.preventDefault();
     if (!manualValue.trim()) return;
@@ -302,13 +325,30 @@ export default function ScanPage() {
       {processing && <p className="scan-hint">{t("processingLabel")}</p>}
 
       {lastResult && (
-        <div className="streak-banner">
-          {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
-          {lastResult.item.name} ({t("quantityLabel")}{" "}
-          {lastResult.item.quantity}){" "}
-          <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
-            {t("viewDetail")}
-          </a>
+        <div className="streak-banner" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
+            {lastResult.item.name} ({t("quantityLabel")}{" "}
+            {lastResult.item.quantity}){" "}
+            <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline", marginRight: 12 }}>
+              {t("viewDetail")}
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={undoLastScan}
+            style={{
+              padding: "4px 8px",
+              fontSize: "0.8rem",
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
+            {t("scanUndoButton")}
+          </button>
         </div>
       )}
 

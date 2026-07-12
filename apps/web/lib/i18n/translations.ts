@@ -124,6 +124,19 @@ const dict = {
   },
   scanAssetMatchedToast: { ko: "자산 확인됨: {name}", en: "Asset confirmed: {name}" },
   convertToAssetButton: { ko: "자산으로 전환", en: "Convert to asset" },
+  scanUndoButton: { ko: "실행취소", en: "Undo" },
+  scanUndoCreatedToast: {
+    ko: "새로 등록된 '{name}' 항목을 삭제했습니다.",
+    en: "Deleted the newly created item '{name}'.",
+  },
+  scanUndoSuccessToast: {
+    ko: "'{name}' 스캔을 취소하여 수량을 되돌렸습니다.",
+    en: "Undid scan for '{name}', reverted quantity.",
+  },
+  scanUndoFailToast: {
+    ko: "스캔 실행취소 실패: {msg}",
+    en: "Failed to undo scan: {msg}",
+  },
 
   // item card
   noLocation: { ko: "위치 없음", en: "No location" },
@@ -189,6 +202,18 @@ const dict = {
     ko: "아이템은 등록됐지만 사진 업로드에는 실패했습니다 — 상세 페이지에서 다시 시도하세요",
     en: "Item added, but the photo failed to upload — try again from the item detail page",
   },
+  generateAndPrintQrCheckbox: {
+    ko: "등록 후 바로 QR 생성 및 인쇄 요청",
+    en: "Generate and print QR immediately after registration",
+  },
+  qrAndPrintSuccessToast: {
+    ko: "QR 생성 및 인쇄 요청이 완료되었습니다.",
+    en: "QR generated and print request sent.",
+  },
+  qrAndPrintFailToast: {
+    ko: "QR 생성 또는 인쇄 요청 실패: {msg}",
+    en: "Failed to generate or print QR: {msg}",
+  },
   itemTypeConsumable: { ko: "소모품", en: "Consumable" },
   itemTypeAsset: { ko: "자산(기기)", en: "Asset" },
   conditionLabel: { ko: "상태", en: "Condition" },
@@ -200,6 +225,7 @@ const dict = {
   // item detail
   qrIssuedToast: { ko: "내부 QR 라벨이 발급되었습니다", en: "Internal QR label issued" },
   printRequestedToast: { ko: "출력 요청을 보냈습니다", en: "Print request sent" },
+  generateAndPrintQrButton: { ko: "QR 생성 및 인쇄", en: "Generate & Print QR" },
   photoUploadedToast: { ko: "사진이 등록되었습니다", en: "Photo added" },
   uploadFailFallback: { ko: "업로드 실패", en: "Upload failed" },
   confirmDeleteItem: {
@@ -209,6 +235,7 @@ const dict = {
   itemDeletedUndoToast: { ko: '"{name}" 삭제됨', en: '"{name}" deleted' },
   undoButton: { ko: "실행취소", en: "Undo" },
   restoreFailToast: { ko: "복구 실패: {msg}", en: "Failed to restore: {msg}" },
+  lastAuditedLabel: { ko: "최근 스캔 확인일", en: "Last scanned/audited" },
   itemNameLabel: { ko: "아이템 이름", en: "Item name" },
   unitPlaceholder: { ko: "단위", en: "Unit" },
   locationLabel: { ko: "위치", en: "Location" },
@@ -236,6 +263,8 @@ const dict = {
   sourceExisting: { ko: "기존", en: "Existing" },
   sourceSerial: { ko: "시리얼번호", en: "Serial number" },
   viewLabel: { ko: "라벨보기", en: "View label" },
+  copyToClipboardButton: { ko: "복사", en: "Copy" },
+  copiedToClipboardToast: { ko: "클립보드에 복사되었습니다.", en: "Copied to clipboard." },
   generateQrButton: { ko: "내부 QR 발급", en: "Issue internal QR" },
   printRequestButton: { ko: "프린터로 출력", en: "Send to printer" },
   manualBarcodePlaceholder: {
@@ -253,6 +282,7 @@ const dict = {
   viewAll: { ko: "전체 보기", en: "View all" },
   notesLabel: { ko: "메모", en: "Notes" },
   maintenanceSectionTitle: { ko: "정비 이력", en: "Maintenance history" },
+  totalMaintenanceCostLabel: { ko: "누적 정비 비용", en: "Total maintenance cost" },
   noMaintenanceRecords: { ko: "등록된 정비 이력이 없습니다.", en: "No maintenance records yet." },
   maintenanceDescriptionPlaceholder: { ko: "정비 내용 (예: 배터리 교체)", en: "Description (e.g. battery replacement)" },
   maintenanceCostPlaceholder: { ko: "비용 (선택)", en: "Cost (optional)" },
