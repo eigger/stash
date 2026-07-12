@@ -185,13 +185,18 @@ export default function ScanPage() {
         method: "POST",
         body: JSON.stringify({ barcodeValue: value, delta }),
       });
+      if (result.item.itemType === "ASSET") {
+        // 자산은 수량 개념이 없고, 연속으로 여러 번 스캔할 이유도 없다 — 소모품의
+        // 연속 스캔 스트릭과 달리 "한 번 찾으면 끝"이라 매치 즉시 상세로 보낸다.
+        // 자체발급 QR을 폰 기본 카메라로 찍었을 때(/i/[id] 딥링크)와 동작을 맞춘 것.
+        show(t("scanAssetMatchedToast", { name: result.item.name }), "success");
+        router.push(`/items/${result.item.id}`);
+        return;
+      }
+
       setLastResult(result);
       setLastMode(activeMode);
-      if (result.item.itemType === "ASSET") {
-        // 자산은 수량 개념이 없다 — 스캔은 그저 "이 기기 맞음"만 확인해준다.
-        // 신규 등록 미니시트도 자산은 항상 수동 폼을 거치므로 뜨지 않는다.
-        show(t("scanAssetMatchedToast", { name: result.item.name }), "success");
-      } else if (result.created) {
+      if (result.created) {
         show(t("scanCreatedToast", { name: result.item.name }), "success");
         setQuickEditFor(result.item.id);
         setQuickLocationId("");
@@ -243,6 +248,22 @@ export default function ScanPage() {
     setQuickEditFor(null);
   }
 
+  // 미등록 바코드는 항상 소모품으로 자동 생성된다 — 사실 자산(기기)에 붙이려던
+  // 라벨이었을 때, 연속 스캔을 방해하는 별도 팝업 없이 그 자리에서 바로 고칠 수 있게 한다.
+  async function convertToAsset() {
+    if (!lastResult) return;
+    try {
+      await apiJson(`/api/items/${lastResult.item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ itemType: "ASSET" }),
+      });
+      setQuickEditFor(null);
+      router.push(`/items/${lastResult.item.id}`);
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
   async function handleManualSubmit(e: FormEvent) {
     e.preventDefault();
     if (!manualValue.trim()) return;
@@ -280,27 +301,18 @@ export default function ScanPage() {
 
       {processing && <p className="scan-hint">{t("processingLabel")}</p>}
 
-      {lastResult && lastResult.item.itemType === "ASSET" ? (
+      {lastResult && (
         <div className="streak-banner">
-          {t("scanAssetMatchedLabel")}: {lastResult.item.name}{" "}
+          {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
+          {lastResult.item.name} ({t("quantityLabel")}{" "}
+          {lastResult.item.quantity}){" "}
           <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
             {t("viewDetail")}
           </a>
         </div>
-      ) : (
-        lastResult && (
-          <div className="streak-banner">
-            {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
-            {lastResult.item.name} ({t("quantityLabel")}{" "}
-            {lastResult.item.quantity}){" "}
-            <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
-              {t("viewDetail")}
-            </a>
-          </div>
-        )
       )}
 
-      {lastResult && lastResult.item.itemType !== "ASSET" && quickEditFor === lastResult.item.id && (
+      {lastResult && quickEditFor === lastResult.item.id && (
         <div className="card" style={{ marginTop: 8 }}>
           <p className="meta" style={{ marginTop: 0 }}>{t("quickEditHint")}</p>
           <div style={{ display: "flex", gap: 8 }}>
@@ -329,6 +341,9 @@ export default function ScanPage() {
               {t("skipButton")}
             </button>
           </div>
+          <button type="button" className="secondary" onClick={convertToAsset} style={{ width: "100%", marginTop: 8 }}>
+            {t("convertToAssetButton")}
+          </button>
         </div>
       )}
 
