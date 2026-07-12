@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pushSubscribeSchema, pushUnsubscribeSchema } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
 import { generateAndSaveVapidKeys, getVapidPublicKey, isPushConfigured, sendPushToUser } from "../lib/push.js";
+import { t } from "../lib/i18n.js";
 
 export async function pushRoutes(app: FastifyInstance) {
   app.get("/config", async () => ({
@@ -21,7 +22,7 @@ export async function pushRoutes(app: FastifyInstance) {
 
   app.post("/subscribe", { preHandler: [app.authenticate] }, async (request, reply) => {
     if (!(await isPushConfigured())) {
-      return reply.code(503).send({ error: "서버에 푸시 알림이 설정되지 않았습니다" });
+      return reply.code(503).send({ error: t("pushNotConfigured", request.locale) });
     }
 
     const parsed = pushSubscribeSchema.safeParse(request.body);
@@ -48,14 +49,14 @@ export async function pushRoutes(app: FastifyInstance) {
   // 배치 잡을 기다리지 않고 본인 구독으로 즉시 테스트 알림을 보내 설정을 바로 확인할 수 있게 한다.
   app.post("/test", { preHandler: [app.authenticate] }, async (request, reply) => {
     if (!(await isPushConfigured())) {
-      return reply.code(503).send({ error: "서버에 푸시 알림이 설정되지 않았습니다" });
+      return reply.code(503).send({ error: t("pushNotConfigured", request.locale) });
     }
     const count = await prisma.pushSubscription.count({ where: { userId: request.user.sub } });
-    if (count === 0) return reply.code(400).send({ error: "구독 정보가 없습니다" });
+    if (count === 0) return reply.code(400).send({ error: t("noPushSubscriptions", request.locale) });
 
     await sendPushToUser(request.user.sub, {
       title: "Stash",
-      body: "테스트 알림입니다. 정상적으로 도착했다면 푸시 설정이 잘 되어 있는 것입니다.",
+      body: t("testPushBody", request.locale),
       url: "/backup",
     });
     return { status: "sent" };
@@ -68,7 +69,7 @@ export async function pushRoutes(app: FastifyInstance) {
     const existing = await prisma.pushSubscription.findUnique({ where: { endpoint: parsed.data.endpoint } });
     if (!existing) return reply.code(204).send();
     if (existing.userId !== request.user.sub) {
-      return reply.code(403).send({ error: "forbidden" });
+      return reply.code(403).send({ error: t("forbiddenSubscription", request.locale) });
     }
 
     await prisma.pushSubscription.delete({ where: { endpoint: parsed.data.endpoint } });

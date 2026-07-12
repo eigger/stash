@@ -17,6 +17,8 @@ import { movementRoutes } from "./routes/movements.js";
 import { pushRoutes } from "./routes/push.js";
 import { startExpiryNotificationJob } from "./jobs/expiryNotifications.js";
 import { startTrashPurgeJob } from "./jobs/trashPurge.js";
+import { startLowStockSummaryJob } from "./jobs/lowStockSummary.js";
+import { localeFromRequest } from "./lib/i18n.js";
 
 const app = Fastify({ logger: true });
 
@@ -29,6 +31,12 @@ await app.register(jwt, { secret: process.env.JWT_SECRET ?? "dev-secret-change-m
 await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB
 // 기본은 전역 미적용 — 무차별 대입 방어가 필요한 로그인 라우트에서만 개별적으로 설정한다.
 await app.register(rateLimit, { global: false });
+
+// 프론트가 보내는 X-Locale 헤더(사용자가 앱에서 고른 언어)로 에러 메시지 언어를 정한다.
+app.decorateRequest("locale", "ko");
+app.addHook("onRequest", async (request) => {
+  request.locale = localeFromRequest(request);
+});
 
 app.decorate("authenticate", async (request, reply) => {
   try {
@@ -75,6 +83,7 @@ await app.register(pushRoutes, { prefix: "/api/push" });
 
 startExpiryNotificationJob();
 startTrashPurgeJob();
+startLowStockSummaryJob();
 
 const port = Number(process.env.PORT ?? 8080);
 

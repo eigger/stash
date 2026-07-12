@@ -5,6 +5,9 @@ declare module "fastify" {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
+  interface FastifyRequest {
+    locale: "ko" | "en";
+  }
 }
 
 declare module "@fastify/jwt" {

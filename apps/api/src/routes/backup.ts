@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
+import { t } from "../lib/i18n.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
@@ -13,7 +14,7 @@ export async function backupRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
   app.addHook("preHandler", async (request, reply) => {
     if (request.user.role !== "ADMIN") {
-      return reply.code(403).send({ error: "forbidden: admin role required" });
+      return reply.code(403).send({ error: t("adminRoleRequired", request.locale) });
     }
   });
 
@@ -87,7 +88,7 @@ export async function backupRoutes(app: FastifyInstance) {
   // POST /api/backup/restore
   app.post("/restore", async (request, reply) => {
     const file = await request.file({ limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB
-    if (!file) return reply.code(400).send({ error: "No backup file uploaded" });
+    if (!file) return reply.code(400).send({ error: t("noBackupFileUploaded", request.locale) });
 
     const restoreTempDirName = `restore_${Date.now()}`;
     const restoreTempDir = path.join(UPLOAD_DIR, restoreTempDirName);
@@ -101,7 +102,7 @@ export async function backupRoutes(app: FastifyInstance) {
 
       const dbJsonPath = path.join(restoreTempDir, "db.json");
       if (!existsSync(dbJsonPath)) {
-        return reply.code(400).send({ error: "Invalid backup: db.json not found" });
+        return reply.code(400).send({ error: t("invalidBackupFile", request.locale) });
       }
       const dbData = JSON.parse(await readFile(dbJsonPath, "utf8"));
 
