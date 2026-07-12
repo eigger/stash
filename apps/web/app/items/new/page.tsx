@@ -333,15 +333,19 @@ export default function NewItemPage() {
           {t("photoUploadLabel")}
           <input type="file" accept="image/*" onChange={handlePhotoSelect} />
         </label>
-        <input
-          type="number"
-          min={0}
-          step="0.01"
-          placeholder={t("pricePlaceholder")}
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
-        <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder={t("pricePlaceholder")}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <span className="badge badge-muted">{currency}</span>
+        </div>
+        <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         <button type="submit" disabled={saving || !name.trim()}>
           {saving ? t("saving") : t("save")}
         </button>

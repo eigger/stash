@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.5.2**
+> Current release: **v0.5.3**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
