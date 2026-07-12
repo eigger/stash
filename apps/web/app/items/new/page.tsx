@@ -11,7 +11,7 @@ import { RECENT_CATEGORIES_KEY, RECENT_LOCATIONS_KEY, loadRecentIds, pushRecentI
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
-import type { Item, Location, Category } from "../../../lib/types";
+import type { Item, ItemCondition, ItemType, Location, Category } from "../../../lib/types";
 
 // 바코드 없는 물건 등록 폼 — 필수 입력은 이름뿐이고 나머지는 전부 선택값으로 두어
 // 나중에 채워도 되게 한다 (입력 마찰 최소화).
@@ -25,6 +25,8 @@ export default function NewItemPage() {
   const [recentLocationIds] = useState(() => loadRecentIds(RECENT_LOCATIONS_KEY));
   const [recentCategoryIds] = useState(() => loadRecentIds(RECENT_CATEGORIES_KEY));
   const [name, setName] = useState("");
+  const [itemType, setItemType] = useState<ItemType>("CONSUMABLE");
+  const [condition, setCondition] = useState<ItemCondition>("NEW");
   const [quantity, setQuantity] = useState(1);
   const [locationId, setLocationId] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -106,10 +108,12 @@ export default function NewItemPage() {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
-          quantity,
+          itemType,
+          condition: itemType === "ASSET" ? condition : undefined,
+          quantity: itemType === "ASSET" ? 1 : quantity,
           locationId: locationId || null,
           categoryId: categoryId || null,
-          expiryDate: expiryDate || null,
+          expiryDate: itemType === "ASSET" ? null : expiryDate || null,
           warrantyExpiresAt: warrantyExpiresAt || null,
           price: price ? Number(price) : null,
           currency: currency.trim() || null,
@@ -148,16 +152,44 @@ export default function NewItemPage() {
           required
           autoFocus
         />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span>{t("quantityLabel")}</span>
-          <input
-            type="number"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            style={{ width: 100 }}
-          />
+        <div className="chip-row">
+          <button
+            type="button"
+            className={`chip${itemType === "CONSUMABLE" ? " chip-selected" : ""}`}
+            onClick={() => setItemType("CONSUMABLE")}
+          >
+            {t("itemTypeConsumable")}
+          </button>
+          <button
+            type="button"
+            className={`chip${itemType === "ASSET" ? " chip-selected" : ""}`}
+            onClick={() => setItemType("ASSET")}
+          >
+            {t("itemTypeAsset")}
+          </button>
         </div>
+        {itemType === "CONSUMABLE" ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span>{t("quantityLabel")}</span>
+            <input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              style={{ width: 100 }}
+            />
+          </div>
+        ) : (
+          <label>
+            {t("conditionLabel")}
+            <select value={condition} onChange={(e) => setCondition(e.target.value as ItemCondition)}>
+              <option value="NEW">{t("conditionNew")}</option>
+              <option value="IN_USE">{t("conditionInUse")}</option>
+              <option value="NEEDS_REPAIR">{t("conditionNeedsRepair")}</option>
+              <option value="RETIRED">{t("conditionRetired")}</option>
+            </select>
+          </label>
+        )}
         {recentLocations.length > 0 && (
           <div className="chip-row">
             {recentLocations.map((l) => (
@@ -240,10 +272,12 @@ export default function NewItemPage() {
         )}
         {scanError && <p className="error-text">{scanError}</p>}
 
-        <label>
-          {t("expiryOptional")}
-          <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
-        </label>
+        {itemType === "CONSUMABLE" && (
+          <label>
+            {t("expiryOptional")}
+            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+          </label>
+        )}
         <label>
           {t("warrantyOptional")}
           <input type="date" value={warrantyExpiresAt} onChange={(e) => setWarrantyExpiresAt(e.target.value)} />

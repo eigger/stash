@@ -41,10 +41,11 @@ export async function itemRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
   app.get("/", async (request) => {
-    const { q, locationId, categoryId, lowStock, expiringSoon, sort, page, pageSize, limit, trashed } = request.query as {
+    const { q, locationId, categoryId, itemType, lowStock, expiringSoon, sort, page, pageSize, limit, trashed } = request.query as {
       q?: string;
       locationId?: string;
       categoryId?: string;
+      itemType?: string;
       lowStock?: string;
       expiringSoon?: string;
       sort?: string;
@@ -70,9 +71,12 @@ export async function itemRoutes(app: FastifyInstance) {
     }
     if (locationId) where.locationId = locationId;
     if (categoryId) where.categoryId = categoryId;
+    if (itemType === "CONSUMABLE" || itemType === "ASSET") where.itemType = itemType;
     if (lowStock === "true") {
       // minQuantity가 설정된 아이템 중 현재 수량이 그 이하이거나, 재고와 무관하게
-      // 장보기 목록에 수동으로 추가(wanted)된 것.
+      // 장보기 목록에 수동으로 추가(wanted)된 것. 자산(ASSET)은 수량 개념이 없으므로
+      // 애초에 minQuantity/wanted를 쓰지 않지만, 방어적으로 소모품만 대상으로 한정한다.
+      where.itemType = "CONSUMABLE";
       andConditions.push({ OR: [{ minQuantity: { not: null } }, { wanted: true }] });
     }
     if (expiringSoon === "true") {
@@ -295,6 +299,7 @@ export async function itemRoutes(app: FastifyInstance) {
         ...ITEM_INCLUDE,
         attachments: true,
         movements: { orderBy: { occurredAt: "desc" }, take: 20 },
+        maintenanceRecords: { orderBy: { date: "desc" } },
       },
     });
     if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
@@ -379,19 +384,30 @@ export async function itemRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const { purchaseDate, expiryDate, warrantyExpiresAt, ...rest } = parsed.data;
+    const data: Record<string, unknown> = {
+      ...rest,
+      purchaseDate: purchaseDate ? new Date(purchaseDate) : purchaseDate === null ? null : undefined,
+      expiryDate: expiryDate ? new Date(expiryDate) : expiryDate === null ? null : undefined,
+      warrantyExpiresAt:
+        warrantyExpiresAt ? new Date(warrantyExpiresAt) : warrantyExpiresAt === null ? null : undefined,
+      // 날짜가 바뀌면 알림 발송 여부도 초기화한다 — 안 그러면 예전 날짜로 이미 알림을
+      // 보낸 아이템에 새 날짜를 넣어도 "이미 알림 보냄" 상태 때문에 다시는 알림이 안 간다.
+      expiryNotifiedAt: expiryDate !== undefined ? null : undefined,
+      warrantyNotifiedAt: warrantyExpiresAt !== undefined ? null : undefined,
+    };
+    // 소모품↔자산 전환 시에만 반대쪽 전용 필드를 정리한다 — 그 외의 일반 필드 수정
+    // 요청에서는 quantity/minQuantity/wanted/condition을 건드리지 않아야 한다.
+    if (rest.itemType === "ASSET") {
+      // 남은 수량이 있으면 자산가치 합계가 그만큼 부풀려진다 — 자산은 항상 1개를 표현한다.
+      data.quantity = 1;
+      data.minQuantity = null;
+      data.wanted = false;
+    } else if (rest.itemType === "CONSUMABLE") {
+      data.condition = null;
+    }
     const item = await prisma.item.update({
       where: { id },
-      data: {
-        ...rest,
-        purchaseDate: purchaseDate ? new Date(purchaseDate) : purchaseDate === null ? null : undefined,
-        expiryDate: expiryDate ? new Date(expiryDate) : expiryDate === null ? null : undefined,
-        warrantyExpiresAt:
-          warrantyExpiresAt ? new Date(warrantyExpiresAt) : warrantyExpiresAt === null ? null : undefined,
-        // 날짜가 바뀌면 알림 발송 여부도 초기화한다 — 안 그러면 예전 날짜로 이미 알림을
-        // 보낸 아이템에 새 날짜를 넣어도 "이미 알림 보냄" 상태 때문에 다시는 알림이 안 간다.
-        expiryNotifiedAt: expiryDate !== undefined ? null : undefined,
-        warrantyNotifiedAt: warrantyExpiresAt !== undefined ? null : undefined,
-      },
+      data,
       include: ITEM_INCLUDE,
     });
     void fireInventoryWebhook("item.updated", item);
@@ -480,6 +496,13 @@ export async function itemRoutes(app: FastifyInstance) {
 
     if (existingBarcode) {
       const item = existingBarcode.item;
+
+      // 자산(ASSET)은 수량 개념이 없다 — 스캔은 "이 기기 맞음, 확인됨"으로만 응답하고
+      // 수량/이력을 건드리지 않는다. 자산 등록은 항상 느린 수동 폼을 거치게 한다.
+      if (item.itemType === "ASSET") {
+        return { item, matched: true, created: false };
+      }
+
       const nextQuantity = Math.max(0, item.quantity + delta);
       const appliedDelta = nextQuantity - item.quantity;
 

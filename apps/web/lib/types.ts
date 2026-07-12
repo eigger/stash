@@ -8,7 +8,7 @@ export interface User {
 }
 
 export type BarcodeSymbology = "EAN13" | "UPCA" | "CODE128" | "QR" | "DATA_MATRIX" | "OTHER";
-export type BarcodeSource = "GENERATED" | "EXISTING" | "MATTER";
+export type BarcodeSource = "GENERATED" | "EXISTING" | "MATTER" | "SERIAL";
 
 export interface Barcode {
   id: string;
@@ -57,6 +57,19 @@ export interface StockMovementWithItem extends StockMovement {
   user: { id: string; name: string } | null;
 }
 
+export type ItemType = "CONSUMABLE" | "ASSET";
+export type ItemCondition = "NEW" | "IN_USE" | "NEEDS_REPAIR" | "RETIRED";
+
+export interface MaintenanceRecord {
+  id: string;
+  itemId: string;
+  date: string;
+  description: string;
+  cost: number | null;
+  currency: string | null;
+  createdAt: string;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -74,6 +87,8 @@ export interface Item {
   photoUrl: string | null;
   notes: string | null;
   wanted: boolean;
+  itemType: ItemType;
+  condition: ItemCondition | null;
   createdAt: string;
   updatedAt: string;
   location: Location | null;
@@ -81,6 +96,7 @@ export interface Item {
   barcodes: Barcode[];
   attachments?: Attachment[];
   movements?: StockMovement[];
+  maintenanceRecords?: MaintenanceRecord[];
 }
 
 export interface ScanResult {

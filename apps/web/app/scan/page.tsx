@@ -187,7 +187,11 @@ export default function ScanPage() {
       });
       setLastResult(result);
       setLastMode(activeMode);
-      if (result.created) {
+      if (result.item.itemType === "ASSET") {
+        // 자산은 수량 개념이 없다 — 스캔은 그저 "이 기기 맞음"만 확인해준다.
+        // 신규 등록 미니시트도 자산은 항상 수동 폼을 거치므로 뜨지 않는다.
+        show(t("scanAssetMatchedToast", { name: result.item.name }), "success");
+      } else if (result.created) {
         show(t("scanCreatedToast", { name: result.item.name }), "success");
         setQuickEditFor(result.item.id);
         setQuickLocationId("");
@@ -276,18 +280,27 @@ export default function ScanPage() {
 
       {processing && <p className="scan-hint">{t("processingLabel")}</p>}
 
-      {lastResult && (
+      {lastResult && lastResult.item.itemType === "ASSET" ? (
         <div className="streak-banner">
-          {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
-          {lastResult.item.name} ({t("quantityLabel")}{" "}
-          {lastResult.item.quantity}){" "}
+          {t("scanAssetMatchedLabel")}: {lastResult.item.name}{" "}
           <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
             {t("viewDetail")}
           </a>
         </div>
+      ) : (
+        lastResult && (
+          <div className="streak-banner">
+            {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
+            {lastResult.item.name} ({t("quantityLabel")}{" "}
+            {lastResult.item.quantity}){" "}
+            <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
+              {t("viewDetail")}
+            </a>
+          </div>
+        )
       )}
 
-      {lastResult && quickEditFor === lastResult.item.id && (
+      {lastResult && lastResult.item.itemType !== "ASSET" && quickEditFor === lastResult.item.id && (
         <div className="card" style={{ marginTop: 8 }}>
           <p className="meta" style={{ marginTop: 0 }}>{t("quickEditHint")}</p>
           <div style={{ display: "flex", gap: 8 }}>

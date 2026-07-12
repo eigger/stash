@@ -16,6 +16,21 @@ enum BarcodeSource {
   GENERATED // 우리가 발급한 내부 QR
   EXISTING  // 제조사 UPC/EAN 등 기존 바코드
   MATTER    // 스마트홈 기기 페어링 QR/설정코드 — 식별자로만 취급, 실제 커미셔닝 연동 없음
+  SERIAL    // 자산(기기)의 시리얼번호 — 바코드가 아니라 손으로 입력하는 경우가 많다
+}
+
+// 수량으로 증감시키는 소모품인지, 개별로 상태·정비이력을 관리하는 자산(기기)인지.
+enum ItemType {
+  CONSUMABLE
+  ASSET
+}
+
+// 자산(ASSET)에만 의미 있는 현재 상태 — 소모품은 이 필드를 쓰지 않는다.
+enum ItemCondition {
+  NEW
+  IN_USE
+  NEEDS_REPAIR
+  RETIRED
 }
 
 enum BarcodeSymbology {
@@ -94,17 +109,22 @@ model Item {
   // 재고부족(minQuantity 기준)과 무관하게 장보기 목록에 수동으로 추가한 항목 —
   // 예: 재고 추적 안 하는 물건을 이번에 사고 싶을 때.
   wanted             Boolean   @default(false)
+  // 수량으로 증감시키는 소모품(CONSUMABLE)인지, 개별 상태·정비이력을 관리하는 자산(ASSET)인지.
+  itemType           ItemType      @default(CONSUMABLE)
+  // ASSET에서만 사용하는 현재 상태. CONSUMABLE은 항상 null.
+  condition          ItemCondition?
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
 
-  location    Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdBy   User?           @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  barcodes    Barcode[]
-  attachments Attachment[]
-  movements   StockMovement[]
+  location           Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  category           Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy          User?              @relation("ItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  barcodes           Barcode[]
+  attachments        Attachment[]
+  movements          StockMovement[]
+  maintenanceRecords MaintenanceRecord[]
 
   @@index([locationId])
   @@index([categoryId])
@@ -153,6 +173,21 @@ model StockMovement {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([itemId, occurredAt])
+}
+
+// 자산(ASSET) 아이템의 정비/점검 이력. 소모품에는 적용하지 않는다.
+model MaintenanceRecord {
+  id        String   @id @default(cuid())
+  itemId    String
+  date      DateTime
+  description String
+  cost      Float?
+  currency  String?
+  createdAt DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId, date])
 }
 
 // 영수증/설명서/보증서 등 사진·PDF 첨부

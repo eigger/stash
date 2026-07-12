@@ -4,11 +4,19 @@ import { useEffect, useState, type ReactNode } from "react";
 import { apiJson } from "../lib/api";
 import { useToast } from "../lib/toast-context";
 import { useLocale } from "../lib/i18n/locale-context";
-import type { Item } from "../lib/types";
+import type { TranslationKey } from "../lib/i18n/translations";
+import type { Item, ItemCondition } from "../lib/types";
 
 function daysUntil(dateStr: string): number {
   return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
+
+const CONDITION_BADGE_KEY: Record<ItemCondition, TranslationKey> = {
+  NEW: "conditionNew",
+  IN_USE: "conditionInUse",
+  NEEDS_REPAIR: "conditionNeedsRepair",
+  RETIRED: "conditionRetired",
+};
 
 interface Props {
   item: Item;
@@ -76,8 +84,14 @@ export function ItemCard({ item, onChange, selectable, selected, onToggleSelect,
           {current.name}
         </a>
         <div className="meta">
-          {current.location?.name ?? t("noLocation")} · {t("quantityLabel")} {current.quantity}
-          {current.unit ?? ""}
+          {current.location?.name ?? t("noLocation")}
+          {current.itemType === "CONSUMABLE" && (
+            <>
+              {" "}
+              · {t("quantityLabel")} {current.quantity}
+              {current.unit ?? ""}
+            </>
+          )}
         </div>
         <div style={{ marginTop: 4, display: "flex", gap: 4 }}>
           {isLow && <span className="badge badge-danger">{t("lowStockBadge")}</span>}
@@ -86,18 +100,25 @@ export function ItemCard({ item, onChange, selectable, selected, onToggleSelect,
               {daysUntil(current.expiryDate) <= 0 ? t("expiredBadge") : `D-${daysUntil(current.expiryDate)}`}
             </span>
           )}
+          {current.itemType === "ASSET" && current.condition && (
+            <span className={`badge ${current.condition === "NEEDS_REPAIR" ? "badge-warning" : "badge-muted"}`}>
+              {t(CONDITION_BADGE_KEY[current.condition])}
+            </span>
+          )}
         </div>
         {extra}
       </div>
-      <div className="qty-stepper">
-        <button className="secondary" disabled={busy} onClick={() => adjust(-1)}>
-          -
-        </button>
-        <span>{current.quantity}</span>
-        <button className="secondary" disabled={busy} onClick={() => adjust(1)}>
-          +
-        </button>
-      </div>
+      {current.itemType === "CONSUMABLE" && (
+        <div className="qty-stepper">
+          <button className="secondary" disabled={busy} onClick={() => adjust(-1)}>
+            -
+          </button>
+          <span>{current.quantity}</span>
+          <button className="secondary" disabled={busy} onClick={() => adjust(1)}>
+            +
+          </button>
+        </div>
+      )}
     </div>
   );
 }

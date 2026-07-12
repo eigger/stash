@@ -17,13 +17,14 @@ interface StoredFilters {
   q: string;
   locationId: string;
   categoryId: string;
+  itemType: string;
   sort: string;
 }
 
 // 검색/필터/정렬을 localStorage에 기억해뒀다가, 목록에 다시 들어왔을 때 그대로 복원한다 —
 // 안 그러면 필터를 걸고 다른 화면에 갔다올 때마다 매번 다시 설정해야 한다.
 function loadStoredFilters(): StoredFilters {
-  const empty: StoredFilters = { q: "", locationId: "", categoryId: "", sort: "" };
+  const empty: StoredFilters = { q: "", locationId: "", categoryId: "", itemType: "", sort: "" };
   if (typeof window === "undefined") return empty;
   try {
     const raw = localStorage.getItem(FILTERS_KEY);
@@ -33,6 +34,7 @@ function loadStoredFilters(): StoredFilters {
       q: typeof parsed.q === "string" ? parsed.q : "",
       locationId: typeof parsed.locationId === "string" ? parsed.locationId : "",
       categoryId: typeof parsed.categoryId === "string" ? parsed.categoryId : "",
+      itemType: typeof parsed.itemType === "string" ? parsed.itemType : "",
       sort: typeof parsed.sort === "string" ? parsed.sort : "",
     };
   } catch {
@@ -53,6 +55,7 @@ export default function ItemsPage() {
   const [q, setQ] = useState(initialFilters.q);
   const [locationId, setLocationId] = useState(initialFilters.locationId);
   const [categoryId, setCategoryId] = useState(initialFilters.categoryId);
+  const [itemType, setItemType] = useState(initialFilters.itemType);
   const [sort, setSort] = useState(initialFilters.sort);
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(true);
@@ -65,7 +68,7 @@ export default function ItemsPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   // 응답이 요청 순서와 다르게 도착해도(빠른 타이핑 등) 가장 최근 요청의 결과만 반영한다.
   const requestSeqRef = useRef(0);
-  const filterKey = `${q}|${locationId}|${categoryId}|${sort}`;
+  const filterKey = `${q}|${locationId}|${categoryId}|${itemType}|${sort}`;
   const prevFilterKeyRef = useRef(filterKey);
 
   useEffect(() => {
@@ -79,8 +82,8 @@ export default function ItemsPage() {
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ q, locationId, categoryId, sort }));
-  }, [q, locationId, categoryId, sort]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ q, locationId, categoryId, itemType, sort }));
+  }, [q, locationId, categoryId, itemType, sort]);
 
   useEffect(() => {
     if (!user) return;
@@ -103,6 +106,7 @@ export default function ItemsPage() {
     if (q) params.set("q", q);
     if (locationId) params.set("locationId", locationId);
     if (categoryId) params.set("categoryId", categoryId);
+    if (itemType) params.set("itemType", itemType);
     if (sort) params.set("sort", sort);
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
@@ -115,7 +119,7 @@ export default function ItemsPage() {
       .finally(() => {
         if (seq === requestSeqRef.current) setBusy(false);
       });
-  }, [user, filterKey, page, refreshKey, q, locationId, categoryId, sort]);
+  }, [user, filterKey, page, refreshKey, q, locationId, categoryId, itemType, sort]);
 
   function handleCsvExport() {
     const token = getToken();
@@ -239,6 +243,11 @@ export default function ItemsPage() {
                 {c.name}
               </option>
             ))}
+          </select>
+          <select value={itemType} onChange={(e) => setItemType(e.target.value)}>
+            <option value="">{t("allItemTypes")}</option>
+            <option value="CONSUMABLE">{t("itemTypeConsumable")}</option>
+            <option value="ASSET">{t("itemTypeAsset")}</option>
           </select>
         </div>
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
