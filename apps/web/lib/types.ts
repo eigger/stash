@@ -73,6 +73,7 @@ export interface Item {
   warrantyExpiresAt: string | null;
   photoUrl: string | null;
   notes: string | null;
+  wanted: boolean;
   createdAt: string;
   updatedAt: string;
   location: Location | null;

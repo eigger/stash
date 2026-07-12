@@ -56,11 +56,37 @@ export default function LocationsPage() {
     }
   }
 
-  function parentName(id: string | null) {
-    return locations.find((l) => l.id === id)?.name;
+  // 부모-자식 관계를 화면에서 바로 알아볼 수 있도록, 부모 바로 아래에 자식이 이어지는
+  // depth-first 순서로 펼치고 들여쓰기로 계층을 표시한다 — 기존에는 등록 순서로만
+  // 나열돼 "이게 어디 밑에 있는 위치인지" 텍스트를 읽어야만 알 수 있었다.
+  function buildOrderedTree(): { location: Location; depth: number }[] {
+    const byParent = new Map<string | null, Location[]>();
+    for (const l of locations) {
+      const key = l.parentId ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(l);
+    }
+    const result: { location: Location; depth: number }[] = [];
+    const visited = new Set<string>();
+    function walk(parentKey: string | null, depth: number) {
+      for (const child of byParent.get(parentKey) ?? []) {
+        result.push({ location: child, depth });
+        visited.add(child.id);
+        walk(child.id, depth + 1);
+      }
+    }
+    walk(null, 0);
+    // 부모가 삭제됐거나 순환 참조 등으로 어디에도 안 걸린 위치가 있으면(정상 동작에서는
+    // 안 생기지만) 목록에서 조용히 사라지지 않도록 맨 끝에라도 붙여준다.
+    for (const l of locations) {
+      if (!visited.has(l.id)) result.push({ location: l, depth: 0 });
+    }
+    return result;
   }
 
   if (loading || !user) return null;
+
+  const orderedLocations = buildOrderedTree();
 
   return (
     <main className="container">
@@ -69,8 +95,9 @@ export default function LocationsPage() {
         <input placeholder={t("newLocationPlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
         <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
           <option value="">{t("noParentLocation")}</option>
-          {locations.map((l) => (
+          {orderedLocations.map(({ location: l, depth }) => (
             <option key={l.id} value={l.id}>
+              {"— ".repeat(depth)}
               {l.name}
             </option>
           ))}
@@ -78,11 +105,11 @@ export default function LocationsPage() {
         <button type="submit">{t("add")}</button>
       </form>
 
-      {locations.map((l) => (
-        <div key={l.id} className="tree-row">
+      {orderedLocations.map(({ location: l, depth }) => (
+        <div key={l.id} className="tree-row" style={{ paddingLeft: depth * 20 }}>
           <div>
+            {depth > 0 && <span className="meta">└ </span>}
             {l.name}
-            {l.parentId && <span className="meta"> · {t("subOf", { name: parentName(l.parentId) ?? "" })}</span>}
             <span className="meta"> · {t("itemCount", { n: l._count?.items ?? 0 })}</span>
           </div>
           <button className="secondary" onClick={() => handleDelete(l.id)}>

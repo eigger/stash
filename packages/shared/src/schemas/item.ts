@@ -15,6 +15,7 @@ export const itemInputSchema = z.object({
   warrantyExpiresAt: z.string().nullable().optional(),
   photoUrl: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  wanted: z.boolean().optional(),
 });
 
 export const itemUpdateSchema = itemInputSchema.partial();

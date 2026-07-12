@@ -14,6 +14,11 @@ interface SettingRow {
   effectiveValue?: string;
 }
 
+interface WebhookFailure {
+  at: string;
+  message: string;
+}
+
 const LOOKUP_PROVIDER_OPTIONS = [
   { id: "openfoodfacts", labelKey: "providerOpenFoodFacts" },
   { id: "upcitemdb", labelKey: "providerUpcItemDb" },
@@ -24,7 +29,7 @@ export default function IntegrationsPage() {
   const router = useRouter();
   const { user, loading, isAdmin } = useAuth();
   const { show } = useToast();
-  const { t } = useLocale();
+  const { t, formatDateTime } = useLocale();
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [value, setValue] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -35,6 +40,7 @@ export default function IntegrationsPage() {
   const [pushConfigured, setPushConfigured] = useState(false);
   const [generatingVapid, setGeneratingVapid] = useState(false);
   const [testingNaver, setTestingNaver] = useState(false);
+  const [webhookFailure, setWebhookFailure] = useState<WebhookFailure | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -46,6 +52,8 @@ export default function IntegrationsPage() {
     setSettings(rows);
     const providersRow = rows.find((s) => s.key === "LOOKUP_PROVIDERS");
     setEnabledProviders(providersRow?.effectiveValue ? providersRow.effectiveValue.split(",").filter(Boolean) : []);
+    const status = await apiJson<{ lastFailure: WebhookFailure | null }>("/api/settings/webhook-status");
+    setWebhookFailure(status.lastFailure);
   }
 
   async function refreshPushConfig() {
@@ -325,6 +333,11 @@ export default function IntegrationsPage() {
           </ul>
         </details>
         <p className="meta">{t("statusLabel")} {webhook?.hasValue ? t("statusSet") : t("statusUnset")}</p>
+        {webhook?.hasValue && webhookFailure && (
+          <p className="error-text" style={{ fontSize: "0.85rem" }}>
+            {t("webhookLastFailureLabel", { at: formatDateTime(webhookFailure.at), msg: webhookFailure.message })}
+          </p>
+        )}
         <form onSubmit={handleWebhookSave} className="form">
           <input
             placeholder={t("webhookUrlPlaceholder")}

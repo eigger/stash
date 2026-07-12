@@ -17,6 +17,7 @@ export default function LabelsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
   const [sendingWebhook, setSendingWebhook] = useState(false);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -27,6 +28,9 @@ export default function LabelsPage() {
   }, [user]);
 
   const withBarcode = items.filter((i) => i.barcodes.length > 0);
+  const visibleItems = q.trim()
+    ? withBarcode.filter((i) => i.name.toLowerCase().includes(q.trim().toLowerCase()))
+    : withBarcode;
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -38,7 +42,16 @@ export default function LabelsPage() {
   }
 
   function toggleAll() {
-    setSelected((prev) => (prev.size === withBarcode.length ? new Set() : new Set(withBarcode.map((i) => i.id))));
+    const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        visibleItems.forEach((i) => next.delete(i.id));
+      } else {
+        visibleItems.forEach((i) => next.add(i.id));
+      }
+      return next;
+    });
   }
 
   // 선택한 여러 아이템의 라벨을 한 장의 인쇄용 PDF 시트로 묶어서 내려받는다.
@@ -89,13 +102,22 @@ export default function LabelsPage() {
         <h1>{t("labelsTitle")}</h1>
         {withBarcode.length > 0 && (
           <button className="secondary" onClick={toggleAll}>
-            {selected.size === withBarcode.length ? t("deselectAll") : t("selectAll")}
+            {visibleItems.length > 0 && visibleItems.every((i) => selected.has(i.id)) ? t("deselectAll") : t("selectAll")}
           </button>
         )}
       </div>
       <p className="scan-hint">{t("labelsHint")}</p>
 
-      {withBarcode.map((item) => {
+      {withBarcode.length > 0 && (
+        <input
+          placeholder={t("searchPlaceholder")}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+      )}
+
+      {visibleItems.map((item) => {
         const primary = item.barcodes.find((b) => b.isPrimary) ?? item.barcodes[0];
         return (
           <div key={item.id} className="tree-row">

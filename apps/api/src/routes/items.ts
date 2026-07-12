@@ -55,18 +55,32 @@ export async function itemRoutes(app: FastifyInstance) {
     };
 
     const where: Record<string, unknown> = { deletedAt: trashed === "true" ? { not: null } : null };
-    if (q) where.name = { contains: q, mode: "insensitive" };
+    // q(이름/바코드 검색)와 lowStock(재고부족 OR 수동 장보기 추가) 둘 다 자기 나름의 OR
+    // 조건이 필요해서, 서로 top-level where.OR를 덮어쓰지 않도록 AND 배열로 감싸 합친다.
+    const andConditions: Record<string, unknown>[] = [];
+    if (q) {
+      // 이름 검색만으로는 상자 속에 넣어둔 물건을 바코드 값으로 찾을 수 없었다 —
+      // 이름 OR 바코드 값 어느 쪽이든 매치하면 걸린다.
+      andConditions.push({
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { barcodes: { some: { value: { contains: q, mode: "insensitive" } } } },
+        ],
+      });
+    }
     if (locationId) where.locationId = locationId;
     if (categoryId) where.categoryId = categoryId;
     if (lowStock === "true") {
-      // minQuantity가 설정된 아이템 중 현재 수량이 그 이하인 것만.
-      where.AND = [{ minQuantity: { not: null } }];
+      // minQuantity가 설정된 아이템 중 현재 수량이 그 이하이거나, 재고와 무관하게
+      // 장보기 목록에 수동으로 추가(wanted)된 것.
+      andConditions.push({ OR: [{ minQuantity: { not: null } }, { wanted: true }] });
     }
     if (expiringSoon === "true") {
       const soon = new Date();
       soon.setDate(soon.getDate() + 14);
       where.expiryDate = { not: null, lte: soon };
     }
+    if (andConditions.length > 0) where.AND = andConditions;
 
     let items = await prisma.item.findMany({
       where,
@@ -75,7 +89,7 @@ export async function itemRoutes(app: FastifyInstance) {
     });
 
     if (lowStock === "true") {
-      items = items.filter((i) => i.minQuantity != null && i.quantity <= i.minQuantity);
+      items = items.filter((i) => (i.minQuantity != null && i.quantity <= i.minQuantity) || i.wanted);
     }
 
     // 목록 규모상 DB 정렬 대신 fetch 후 JS에서 정렬 — 위 lowStock 필터와 같은 방식.

@@ -236,7 +236,17 @@ export default function ItemDetailPage() {
   return (
     <main className="container">
       <div className="page-header">
-        <h1>{item.name}</h1>
+        <input
+          className="item-name-input"
+          value={item.name}
+          onChange={(e) => setItem({ ...item, name: e.target.value })}
+          onBlur={(e) => {
+            const trimmed = e.target.value.trim();
+            if (trimmed) updateField("name", trimmed);
+            else refresh();
+          }}
+          aria-label={t("itemNameLabel")}
+        />
         <button className="danger" onClick={handleDelete}>
           {t("delete")}
         </button>
@@ -252,7 +262,13 @@ export default function ItemDetailPage() {
           <button className="secondary" onClick={() => adjustQuantity(-1)}>-</button>
           <span style={{ fontSize: "1.4rem", minWidth: 40, textAlign: "center" }}>{item.quantity}</span>
           <button className="secondary" onClick={() => adjustQuantity(1)}>+</button>
-          <span className="meta">{item.unit ?? ""}</span>
+          <input
+            className="unit-input"
+            placeholder={t("unitPlaceholder")}
+            value={item.unit ?? ""}
+            onChange={(e) => setItem({ ...item, unit: e.target.value })}
+            onBlur={(e) => updateField("unit", e.target.value.trim() || null)}
+          />
         </div>
 
         <label>
@@ -287,6 +303,15 @@ export default function ItemDetailPage() {
             value={item.minQuantity ?? ""}
             onChange={(e) => updateField("minQuantity", e.target.value ? Number(e.target.value) : null)}
           />
+        </label>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row" }}>
+          <input
+            type="checkbox"
+            checked={item.wanted}
+            onChange={(e) => updateField("wanted", e.target.checked)}
+          />
+          {t("addToShoppingListLabel")}
         </label>
 
         <label>
@@ -412,6 +437,7 @@ export default function ItemDetailPage() {
               {t("addMatterBarcode")}
             </button>
           </div>
+          <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
         </div>
       </div>
 

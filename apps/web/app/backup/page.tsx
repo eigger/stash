@@ -31,7 +31,7 @@ export default function MorePage() {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>{t("menuGroupActions")}</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <a href="/shopping"><button className="secondary" style={{ width: "100%" }}>{t("shoppingListTitle")}</button></a>
+          <a href="/history"><button className="secondary" style={{ width: "100%" }}>{t("historyTitle")}</button></a>
           <a href="/labels"><button className="secondary" style={{ width: "100%" }}>{t("printLabels")}</button></a>
           <a href="/trash"><button className="secondary" style={{ width: "100%" }}>{t("trashTitle")}</button></a>
         </div>

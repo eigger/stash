@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { apiJson } from "../lib/api";
 import { useToast } from "../lib/toast-context";
 import { useLocale } from "../lib/i18n/locale-context";
@@ -16,10 +16,13 @@ interface Props {
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  // 이 카드가 여러 화면(목록/대시보드/장보기)에서 재사용되다 보니, 화면별로만 필요한
+  // 내용(장보기의 메모·구매완료 체크 등)은 ItemCard가 직접 알 필요 없이 여기로 끼워 넣는다.
+  extra?: ReactNode;
 }
 
 // 목록에서 바로 수량을 조정할 수 있는 카드 — 상세 페이지까지 들어가지 않아도 되게 하는 게 핵심.
-export function ItemCard({ item, onChange, selectable, selected, onToggleSelect }: Props) {
+export function ItemCard({ item, onChange, selectable, selected, onToggleSelect, extra }: Props) {
   const { show } = useToast();
   const { t } = useLocale();
   const [current, setCurrent] = useState(item);
@@ -84,6 +87,7 @@ export function ItemCard({ item, onChange, selectable, selected, onToggleSelect 
             </span>
           )}
         </div>
+        {extra}
       </div>
       <div className="qty-stepper">
         <button className="secondary" disabled={busy} onClick={() => adjust(-1)}>

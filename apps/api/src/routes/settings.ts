@@ -3,6 +3,7 @@ import { settingUpdateSchema } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
 import { parseEnabledProviderIds } from "../lib/barcodeLookup/index.js";
 import { getSetting } from "../lib/settings.js";
+import { getLastWebhookFailure } from "../lib/webhook.js";
 import { t } from "../lib/i18n.js";
 
 const DEFAULT_APP_PUBLIC_URL = "http://localhost:3000";
@@ -64,6 +65,12 @@ export async function settingsRoutes(app: FastifyInstance) {
     const { key } = request.params as { key: string };
     await prisma.setting.deleteMany({ where: { key } });
     return reply.code(204).send();
+  });
+
+  // 웹훅 실패는 지금까지 발생 순간의 토스트 하나뿐이라 나중에 "왜 프린터가 안 찍혔지"를
+  // 확인할 방법이 없었다 — 마지막 실패만 최소한으로 보여준다.
+  app.get("/webhook-status", async () => {
+    return { lastFailure: await getLastWebhookFailure() };
   });
 
   // 저장한 Client ID/Secret이 실제로 유효한지 그 자리에서 바로 확인한다 — 잘못 입력해도
