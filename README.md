@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.5.1**
+> Current release: **v0.5.2**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -20,7 +20,7 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 ## Features
 
 - Nested locations (rooms / shelves / boxes) rendered as an indented tree, and categories
-- Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes — name and unit are inline-editable right on the item detail page. Photos can be taken/picked right in the "add manually" form (auto-resized on upload), and a per-user default currency (set in Settings) pre-fills the price-unit field
+- Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes — name and unit are inline-editable right on the item detail page. Photos can be taken *or* picked from the gallery right in the "add manually" form (auto-resized on upload), and price uses a default currency (KRW/USD, set once in Settings) instead of typing it on every item
 - Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), a Matter pairing code, or a manually-entered serial number (with inline copy explaining Matter codes are an identifier only, not real commissioning), all as one barcode type
 - Asset mode alongside quantity tracking — flip an item to **Asset** to track a single physical device: condition (new / in use / needs repair / retired), a serial-number barcode entry, and a maintenance-history log (date, description, cost). Asset items hide the quantity stepper/low-stock fields, are excluded from shopping-list/low-stock logic, and scanning an asset's barcode just confirms a match instead of adjusting quantity
 - Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code. Tuned for real-world speed/accuracy (format hints, higher resolution, continuous autofocus), with an audible beep, haptic buzz, and a low-light flash toggle. A newly auto-created item gets a quick inline sheet to set its location/threshold on the spot

@@ -183,7 +183,6 @@ const dict = {
   warrantyOptional: { ko: "보증 만료일 (선택)", en: "Warranty expiry (optional)" },
   notesPlaceholder: { ko: "메모 (선택)", en: "Notes (optional)" },
   pricePlaceholder: { ko: "가격 (선택)", en: "Price (optional)" },
-  currencyPlaceholder: { ko: "통화 (예: KRW)", en: "Currency (e.g. USD)" },
   itemCreatedToast: { ko: "아이템이 등록되었습니다", en: "Item added" },
   itemCreateFailToast: { ko: "등록 실패: {msg}", en: "Failed to add: {msg}" },
   photoUploadFailToast: {

@@ -35,7 +35,8 @@ export default function NewItemPage() {
   const [expiryDate, setExpiryDate] = useState("");
   const [warrantyExpiresAt, setWarrantyExpiresAt] = useState("");
   const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState(() => loadDefaultCurrency());
+  // 통화는 설정 화면의 기본 통화를 그대로 쓴다 — 등록 폼에서 매번 고르게 하지 않는다.
+  const [currency] = useState(() => loadDefaultCurrency());
   const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
@@ -330,24 +331,16 @@ export default function NewItemPage() {
         )}
         <label>
           {t("photoUploadLabel")}
-          <input type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} />
+          <input type="file" accept="image/*" onChange={handlePhotoSelect} />
         </label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder={t("pricePlaceholder")}
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-          <input
-            placeholder={t("currencyPlaceholder")}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            style={{ maxWidth: 100 }}
-          />
-        </div>
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder={t("pricePlaceholder")}
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
         <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
         <button type="submit" disabled={saving || !name.trim()}>
           {saving ? t("saving") : t("save")}
