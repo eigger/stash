@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { apiJson, ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import { enqueueScan, getScanQueue, removeFromScanQueue } from "../../lib/scanQueue";
+import { playBeep, unlockBeepAudio } from "../../lib/beep";
+import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../lib/barcodeScanner";
+import { TorchButton } from "../../components/TorchButton";
 import type { ScanResult } from "../../lib/types";
 
 // 연속 스캔(streak) UX: 화면 전환 없이 계속 카메라를 켜둔 채로 스캔 → 자동 저장 →
@@ -20,7 +23,7 @@ export default function ScanPage() {
   const { show } = useToast();
   const { t } = useLocale();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
   const processingRef = useRef(false);
 
@@ -33,6 +36,8 @@ export default function ScanPage() {
   const modeRef = useRef(mode);
   const [queueCount, setQueueCount] = useState(0);
   const flushingRef = useRef(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -48,6 +53,13 @@ export default function ScanPage() {
     window.addEventListener("online", flushScanQueue);
     return () => window.removeEventListener("online", flushScanQueue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // 스캔 감지는 사용자 클릭이 아니라 카메라 콜백에서 일어나 브라우저의 오디오
+    // 자동재생 제한에 걸릴 수 있다 — 화면을 처음 터치하는 순간 미리 오디오를 깨워둔다.
+    window.addEventListener("pointerdown", unlockBeepAudio, { once: true });
+    return () => window.removeEventListener("pointerdown", unlockBeepAudio);
   }, []);
 
   async function flushScanQueue() {
@@ -91,16 +103,20 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (!user || !videoRef.current) return;
-    const reader = new BrowserMultiFormatReader();
+    const reader = new BrowserMultiFormatReader(SCAN_HINTS);
     let cancelled = false;
 
     reader
-      .decodeFromConstraints({ video: { facingMode: "environment" } }, videoRef.current, (result) => {
+      .decodeFromConstraints({ video: SCAN_VIDEO_CONSTRAINTS }, videoRef.current, (result) => {
         if (cancelled || !result) return;
         handleDetected(result.getText());
       })
       .then((controls) => {
         controlsRef.current = controls;
+        const stream = videoRef.current?.srcObject;
+        if (stream instanceof MediaStream) {
+          setTorchSupported(BrowserCodeReader.mediaStreamIsTorchCompatible(stream));
+        }
       })
       .catch(() => {
         setCameraError(t("cameraError"));
@@ -109,9 +125,21 @@ export default function ScanPage() {
     return () => {
       cancelled = true;
       controlsRef.current?.stop();
+      setTorchSupported(false);
+      setTorchOn(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  async function toggleTorch() {
+    const next = !torchOn;
+    try {
+      await controlsRef.current?.switchTorch?.(next);
+      setTorchOn(next);
+    } catch {
+      // 토치 전환 실패는 스캔 자체를 막을 이유가 안 된다 — 조용히 무시.
+    }
+  }
 
   async function handleDetected(value: string) {
     const now = Date.now();
@@ -121,6 +149,7 @@ export default function ScanPage() {
     }
     lastScanRef.current = { value, at: now };
     if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(80);
+    playBeep();
     await submitScan(value);
   }
 
@@ -198,6 +227,9 @@ export default function ScanPage() {
               <span className="scan-line" />
             </div>
           </div>
+          {torchSupported && (
+            <TorchButton active={torchOn} onClick={toggleTorch} label={t(torchOn ? "torchOnLabel" : "torchOffLabel")} />
+          )}
         </div>
       )}
 

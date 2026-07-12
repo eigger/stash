@@ -74,6 +74,8 @@ const dict = {
     ko: "카메라를 사용할 수 없습니다. 브라우저 권한을 확인하거나 아래에서 바코드를 직접 입력하세요.",
     en: "Camera unavailable. Check browser permissions or enter the barcode manually below.",
   },
+  torchOnLabel: { ko: "플래시 끄기", en: "Turn off flash" },
+  torchOffLabel: { ko: "플래시 켜기", en: "Turn on flash" },
   processingLabel: { ko: "처리 중...", en: "Processing..." },
   createdLabel: { ko: "새로 등록됨", en: "Newly added" },
   increasedLabel: { ko: "수량 증가", en: "Quantity increased" },
