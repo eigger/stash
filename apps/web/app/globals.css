@@ -131,6 +131,39 @@ h1 {
   margin-bottom: 16px;
 }
 
+.item-name-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 4px 6px;
+  margin: 0 8px 0 -6px;
+  color: var(--color-text);
+}
+
+.item-name-input:hover,
+.item-name-input:focus {
+  border-color: var(--color-input-border);
+  background: var(--color-surface);
+}
+
+.unit-input {
+  width: 64px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 4px 6px;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.unit-input:hover,
+.unit-input:focus {
+  border-color: var(--color-input-border);
+  background: var(--color-surface);
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -317,6 +350,31 @@ button:disabled {
   font-size: 1rem;
   color: var(--color-text-secondary);
   margin: 20px 0 8px;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-check {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.onboarding-check.done {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .bottom-nav {

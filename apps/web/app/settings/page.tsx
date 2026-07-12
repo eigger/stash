@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { API_URL, apiFetch, getToken } from "../../lib/api";
+import { API_URL, apiFetch, apiJson, getToken } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
@@ -16,10 +16,37 @@ export default function SettingsPage() {
   const { show } = useToast();
   const { t } = useLocale();
   const [restoring, setRestoring] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      show(t("passwordMismatchError"), "error");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await apiJson("/api/auth/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      show(t("passwordChangedToast"), "success");
+    } catch (err: any) {
+      show(t("passwordChangeFailToast", { msg: err.message }), "error");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
 
   async function handleExport() {
     const token = getToken();
@@ -54,6 +81,36 @@ export default function SettingsPage() {
         <h2 style={{ marginTop: 0 }}>{t("myAccountTitle")}</h2>
         <p className="meta">{user.name} ({user.email}) · {user.role === "ADMIN" ? t("roleAdmin") : t("roleGeneral")}</p>
         <button className="secondary" onClick={logout}>{t("logoutButton")}</button>
+
+        <h3 style={{ marginBottom: 8 }}>{t("changePasswordTitle")}</h3>
+        <form onSubmit={handleChangePassword} className="form">
+          <input
+            type="password"
+            placeholder={t("currentPasswordPlaceholder")}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder={t("newPasswordPlaceholder")}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+          <input
+            type="password"
+            placeholder={t("confirmNewPasswordPlaceholder")}
+            value={confirmNewPassword}
+            onChange={(e) => setConfirmNewPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+          <button type="submit" className="secondary" disabled={changingPassword}>
+            {changingPassword ? t("processingLabel") : t("changePasswordButton")}
+          </button>
+        </form>
       </div>
 
       <div className="card">

@@ -1,6 +1,29 @@
-import { getSetting } from "./settings.js";
+import { getSetting, setSetting } from "./settings.js";
+import { prisma } from "./prisma.js";
 
 const DEFAULT_APP_PUBLIC_URL = "http://localhost:3000";
+const LAST_FAILURE_KEY = "WEBHOOK_LAST_FAILURE";
+
+export interface WebhookFailure {
+  at: string;
+  message: string;
+}
+
+// 실패는 토스트 한 번으로 끝나서 나중에 "왜 프린터가 안 찍혔지"를 확인할 방법이 없었다 —
+// 마지막 실패 시각/메시지만 최소한으로 남겨서 설정 화면에서 바로 보여준다.
+export async function getLastWebhookFailure(): Promise<WebhookFailure | null> {
+  const raw = await getSetting(LAST_FAILURE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as WebhookFailure;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearLastWebhookFailure(): Promise<void> {
+  await prisma.setting.deleteMany({ where: { key: LAST_FAILURE_KEY } });
+}
 
 export type InventoryWebhookEvent = "item.updated" | "item.print_requested";
 
@@ -82,13 +105,17 @@ export async function fireInventoryWebhook(event: InventoryWebhookEvent, item: W
   const payload = buildWebhookPayload(event, item, baseUrl);
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(5000),
     });
-  } catch {
-    // 재시도는 웹훅을 받는 쪽 자동화의 몫 — 여기서는 그냥 무시한다.
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await clearLastWebhookFailure();
+  } catch (err: any) {
+    // 재시도는 웹훅을 받는 쪽 자동화의 몫 — 여기서는 그냥 무시하되, 나중에 설정 화면에서
+    // "왜 안 왔지"를 확인할 수 있도록 마지막 실패만 기록해둔다.
+    await setSetting(LAST_FAILURE_KEY, JSON.stringify({ at: new Date().toISOString(), message: err.message || String(err) }));
   }
 }

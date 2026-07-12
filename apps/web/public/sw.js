@@ -1,7 +1,5 @@
 const CACHE_NAME = "stash-shell-v2";
 // 오프라인에서도 하단 탭 대부분이 최소한 앱 셸(껍데기)은 뜨도록 주요 화면을 미리 캐시해둔다.
-// 실제 데이터는 API 응답이라 캐시하지 않고(/api/ 는 아래 fetch 핸들러에서 항상 제외), 화면
-// 골격만 오프라인에서도 열리게 하는 것이 목적이다.
 const SHELL_ASSETS = [
   "/",
   "/login",
@@ -18,6 +16,21 @@ const SHELL_ASSETS = [
   "/offline",
 ];
 
+// 셸만 뜨고 안이 텅 비어 있으면 오프라인에서 별 쓸모가 없다 — 아이템 목록/상세(GET)만
+// 최근 성공 응답을 저장해뒀다가, 진짜 오프라인일 때만 그걸로 대신 보여준다. 쓰기 요청
+// (POST/PUT/PATCH/DELETE)이나 다른 API는 절대 캐시하지 않는다 — 정확성이 중요한 데이터를
+// 오프라인 상태로 잘못 보여주면 안 되기 때문이다.
+const API_CACHE_NAME = "stash-api-v1";
+const ITEMS_API_SUBROUTE_DENYLIST = new Set(["scan", "stats", "export.csv", "import.csv", "bulk", "bulk-delete"]);
+
+function isCacheableItemsGet(request) {
+  if (request.method !== "GET") return false;
+  const { pathname } = new URL(request.url);
+  if (pathname === "/api/items") return true;
+  const match = pathname.match(/^\/api\/items\/([^/]+)$/);
+  return !!match && !ITEMS_API_SUBROUTE_DENYLIST.has(match[1]);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).catch(() => {}),
@@ -26,16 +39,35 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  const keep = new Set([CACHE_NAME, API_CACHE_NAME]);
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => !keep.has(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
+  if (isCacheableItemsGet(request)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(API_CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.open(API_CACHE_NAME).then((cache) => cache.match(request)).then((cached) => cached || Response.error()),
+        ),
+    );
+    return;
+  }
+
   if (request.url.includes("/api/")) return;
 
   event.respondWith(

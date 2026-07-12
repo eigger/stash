@@ -91,6 +91,9 @@ model Item {
   warrantyNotifiedAt DateTime?
   photoUrl           String?
   notes              String?
+  // 재고부족(minQuantity 기준)과 무관하게 장보기 목록에 수동으로 추가한 항목 —
+  // 예: 재고 추적 안 하는 물건을 이번에 사고 싶을 때.
+  wanted             Boolean   @default(false)
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

@@ -46,11 +46,12 @@ function CameraIcon() {
   );
 }
 
-function ClockIcon() {
+function CartIcon() {
   return (
     <svg {...iconProps()}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5V12l3 2" />
+      <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 8H6" />
+      <circle cx="9.5" cy="20" r="1.3" />
+      <circle cx="17" cy="20" r="1.3" />
     </svg>
   );
 }
@@ -69,7 +70,7 @@ const TABS: { href: string; labelKey: TranslationKey; Icon: () => JSX.Element; p
   { href: "/", labelKey: "navHome", Icon: HomeIcon },
   { href: "/items", labelKey: "navItems", Icon: BoxIcon },
   { href: "/scan", labelKey: "navScan", Icon: CameraIcon, primary: true },
-  { href: "/history", labelKey: "navHistory", Icon: ClockIcon },
+  { href: "/shopping", labelKey: "navShopping", Icon: CartIcon },
   { href: "/backup", labelKey: "navMore", Icon: MoreIcon },
 ];
 

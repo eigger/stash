@@ -11,7 +11,7 @@ import { enqueueScan, getScanQueue, removeFromScanQueue } from "../../lib/scanQu
 import { playBeep, unlockBeepAudio } from "../../lib/beep";
 import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../lib/barcodeScanner";
 import { TorchButton } from "../../components/TorchButton";
-import type { ScanResult } from "../../lib/types";
+import type { Item, Location, ScanResult } from "../../lib/types";
 
 // 연속 스캔(streak) UX: 화면 전환 없이 계속 카메라를 켜둔 채로 스캔 → 자동 저장 →
 // 다음 스캔이 이어진다. 장보기 후 한 번에 재고를 채울 때 마찰이 없어야 하기 때문.
@@ -38,6 +38,13 @@ export default function ScanPage() {
   const flushingRef = useRef(false);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  // 새로 생성된 아이템의 id — 이 값과 lastResult.item.id가 같을 때만 미니시트를 보여준다.
+  // 이미 있던 아이템의 수량 조정(created:false)에서는 뜨지 않아야 연속 스캔 흐름이 안 끊긴다.
+  const [quickEditFor, setQuickEditFor] = useState<string | null>(null);
+  const [quickLocationId, setQuickLocationId] = useState("");
+  const [quickMinQuantity, setQuickMinQuantity] = useState("");
+  const [quickSaving, setQuickSaving] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -54,6 +61,10 @@ export default function ScanPage() {
     return () => window.removeEventListener("online", flushScanQueue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (user) apiJson<Location[]>("/api/locations").then(setLocations);
+  }, [user]);
 
   useEffect(() => {
     // 스캔 감지는 사용자 클릭이 아니라 카메라 콜백에서 일어나 브라우저의 오디오
@@ -178,6 +189,9 @@ export default function ScanPage() {
       setLastMode(activeMode);
       if (result.created) {
         show(t("scanCreatedToast", { name: result.item.name }), "success");
+        setQuickEditFor(result.item.id);
+        setQuickLocationId("");
+        setQuickMinQuantity("");
       } else if (activeMode === "consume") {
         show(t("scanDecreasedToast", { name: result.item.name, qty: result.item.quantity }), "success");
       } else {
@@ -196,6 +210,33 @@ export default function ScanPage() {
       processingRef.current = false;
       setProcessing(false);
     }
+  }
+
+  // 신규 생성된 아이템은 위치·최소수량이 비어 있어 대시보드 재고부족/장보기 로직이 바로
+  // 동작하지 않는다 — 스캔 흐름을 벗어나지 않은 채로 그 자리에서 바로 채울 수 있게 한다.
+  async function saveQuickEdit() {
+    if (!lastResult) return;
+    setQuickSaving(true);
+    try {
+      const updated = await apiJson<Item>(`/api/items/${lastResult.item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          locationId: quickLocationId || null,
+          minQuantity: quickMinQuantity ? Number(quickMinQuantity) : null,
+        }),
+      });
+      setLastResult((prev) => (prev ? { ...prev, item: updated } : prev));
+      show(t("quickEditSavedToast"), "success");
+    } catch (err: any) {
+      show(err.message, "error");
+    } finally {
+      setQuickSaving(false);
+      setQuickEditFor(null);
+    }
+  }
+
+  function skipQuickEdit() {
+    setQuickEditFor(null);
   }
 
   async function handleManualSubmit(e: FormEvent) {
@@ -243,6 +284,38 @@ export default function ScanPage() {
           <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
             {t("viewDetail")}
           </a>
+        </div>
+      )}
+
+      {lastResult && quickEditFor === lastResult.item.id && (
+        <div className="card" style={{ marginTop: 8 }}>
+          <p className="meta" style={{ marginTop: 0 }}>{t("quickEditHint")}</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select value={quickLocationId} onChange={(e) => setQuickLocationId(e.target.value)} style={{ flex: 1 }}>
+              <option value="">{t("selectLocationOptional")}</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={0}
+              placeholder={t("minQuantityLabel")}
+              value={quickMinQuantity}
+              onChange={(e) => setQuickMinQuantity(e.target.value)}
+              style={{ width: 100 }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={saveQuickEdit} disabled={quickSaving} style={{ flex: 1 }}>
+              {quickSaving ? t("processingLabel") : t("save")}
+            </button>
+            <button type="button" className="secondary" onClick={skipQuickEdit} style={{ flex: 1 }}>
+              {t("skipButton")}
+            </button>
+          </div>
         </div>
       )}
 

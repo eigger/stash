@@ -17,6 +17,7 @@ const dict = {
   navItems: { ko: "아이템", en: "Items" },
   navScan: { ko: "스캔", en: "Scan" },
   navHistory: { ko: "이력", en: "History" },
+  navShopping: { ko: "장보기", en: "Shopping" },
   navMore: { ko: "더보기", en: "More" },
 
   // login
@@ -44,8 +45,21 @@ const dict = {
   noUrgentItems: { ko: "재고부족·유통기한 임박 항목이 없습니다.", en: "No low-stock or expiring items." },
   onboardingTitle: { ko: "시작해볼까요?", en: "Let's get started" },
   onboardingHint: {
-    ko: "아직 등록된 아이템이 없습니다. 바로 스캔해서 첫 아이템을 등록하거나, 먼저 위치·카테고리를 만들어두면 이후 정리가 편해집니다.",
-    en: "No items yet. Scan something to add your first item, or set up locations/categories first to make organizing easier later.",
+    ko: "아직 등록된 아이템이 없습니다. 아래 순서대로 준비하면 이후가 훨씬 편해집니다.",
+    en: "No items yet. Set these up first and everything after will go more smoothly.",
+  },
+  onboardStep1Title: { ko: "위치 만들기", en: "Add a location" },
+  onboardStep1Hint: { ko: "방·선반·냉장고 등 물건이 있는 곳을 하나 이상 등록하세요.", en: "Register at least one place things live — a room, shelf, fridge…" },
+  onboardStep2Title: { ko: "알림 켜기", en: "Turn on notifications" },
+  onboardStep2Hint: { ko: "유통기한·재고부족을 놓치지 않게 이 기기에서 푸시 알림을 켜세요.", en: "Enable push on this device so you don't miss expiry/low-stock alerts." },
+  onboardStep2NotConfiguredHint: {
+    ko: "관리자가 아직 푸시 알림을 설정하지 않았습니다 (설정 > 외부 연동에서 발급).",
+    en: "The admin hasn't set up push notifications yet (issue keys under Settings > Integrations).",
+  },
+  onboardStep3Title: { ko: "(선택) 공개 URL 설정", en: "(Optional) Set public URL" },
+  onboardStep3Hint: {
+    ko: "실제 접속 도메인으로 설정해야 자체 발급 QR을 아무 카메라 앱으로 스캔해도 앱이 열립니다.",
+    en: "Set your real domain so self-issued QR labels open the app from any camera app.",
   },
   dashboardLoadFailed: {
     ko: "대시보드 정보를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.",
@@ -63,6 +77,7 @@ const dict = {
     en: "Items running low. Tap + for each one you buy — it drops off once it's back above the threshold.",
   },
   shoppingListEmpty: { ko: "장 볼 항목이 없습니다.", en: "Nothing to buy right now." },
+  boughtCheckboxLabel: { ko: "구매완료", en: "Bought" },
 
   // scan
   scanTitle: { ko: "스캔", en: "Scan" },
@@ -89,6 +104,12 @@ const dict = {
   scanModeRestock: { ko: "입고 (+1)", en: "Restock (+1)" },
   scanModeConsume: { ko: "소비 (-1)", en: "Consume (-1)" },
   scanCreatedToast: { ko: "새 아이템 등록: {name}", en: "New item added: {name}" },
+  quickEditHint: {
+    ko: "위치와 재고부족 기준 수량을 지금 채우면 대시보드·장보기에 바로 반영됩니다.",
+    en: "Fill in location and low-stock threshold now so it shows up on the dashboard/shopping list right away.",
+  },
+  quickEditSavedToast: { ko: "저장되었습니다", en: "Saved" },
+  skipButton: { ko: "건너뛰기", en: "Skip" },
   scanIncreasedToast: { ko: "{name} 수량 +1 (현재 {qty})", en: "{name} +1 (now {qty})" },
   scanDecreasedToast: { ko: "{name} 수량 -1 (현재 {qty})", en: "{name} -1 (now {qty})" },
   scanFailToast: { ko: "스캔 처리 실패: {msg}", en: "Scan failed: {msg}" },
@@ -175,11 +196,17 @@ const dict = {
   itemDeletedUndoToast: { ko: '"{name}" 삭제됨', en: '"{name}" deleted' },
   undoButton: { ko: "실행취소", en: "Undo" },
   restoreFailToast: { ko: "복구 실패: {msg}", en: "Failed to restore: {msg}" },
+  itemNameLabel: { ko: "아이템 이름", en: "Item name" },
+  unitPlaceholder: { ko: "단위", en: "Unit" },
   locationLabel: { ko: "위치", en: "Location" },
   noLocationOption: { ko: "위치 없음", en: "No location" },
   categoryLabel: { ko: "카테고리", en: "Category" },
   noCategoryOption: { ko: "카테고리 없음", en: "No category" },
   minQuantityLabel: { ko: "재고부족 기준 수량", en: "Low-stock threshold" },
+  addToShoppingListLabel: {
+    ko: "장보기 목록에 추가 (재고와 무관하게)",
+    en: "Add to shopping list (regardless of stock level)",
+  },
   expiryLabel: { ko: "유통기한", en: "Expiry date" },
   warrantyLabel: { ko: "보증 만료일", en: "Warranty expiry" },
   photoUploadLabel: { ko: "사진 촬영/업로드", en: "Take or upload photo" },
@@ -199,6 +226,10 @@ const dict = {
   },
   addExistingBarcode: { ko: "기존 바코드로 추가", en: "Add as existing barcode" },
   addMatterBarcode: { ko: "Matter 코드로 추가", en: "Add as Matter code" },
+  matterCodeHint: {
+    ko: "스마트홈 기기의 Matter 페어링 코드를 이 아이템의 식별자로만 저장합니다 — 실제 기기 연동(커미셔닝)은 지원하지 않고, 나중에 이 코드로 다시 찾을 수 있게 하는 용도입니다.",
+    en: "Stores a smart-home device's Matter pairing code purely as an identifier for this item — it does not perform actual device commissioning, it just lets you look the device back up by this code later.",
+  },
   movementHistoryTitle: { ko: "수량 변경 이력", en: "Quantity history" },
   viewAll: { ko: "전체 보기", en: "View all" },
   notesLabel: { ko: "메모", en: "Notes" },
@@ -321,6 +352,10 @@ const dict = {
     ko: '아이템이 등록·변경될 때마다, 그리고 아이템 상세/라벨 화면에서 "프린터로 출력"을 요청할 때 이 URL로 아이템 정보를 전송합니다. 웹훅을 받을 수 있는 프린터·라벨 기기 자동화(예: Home Assistant)와 연동할 때 사용하며, 실제 출력이나 기기 제어는 전적으로 웹훅을 받는 쪽에서 처리합니다.',
     en: 'Sends item info to this URL whenever an item is created/changed, and whenever "Send to printer" is requested from the item/labels screens. Use it to connect a webhook-capable printer/label-device automation (e.g. Home Assistant) — the actual printing or device control is entirely up to the receiver.',
   },
+  webhookLastFailureLabel: {
+    ko: "마지막 실패: {at} — {msg}",
+    en: "Last failure: {at} — {msg}",
+  },
   viewPayloadFields: { ko: "전송되는 데이터 보기", en: "View payload fields" },
   payloadEventDesc: {
     ko: 'event — "item.updated" 또는 "item.print_requested"',
@@ -356,6 +391,14 @@ const dict = {
   menuGroupAccount: { ko: "계정 · 연동", en: "Account & integrations" },
   myAccountTitle: { ko: "내 계정", en: "My account" },
   logoutButton: { ko: "로그아웃", en: "Log out" },
+  changePasswordTitle: { ko: "비밀번호 변경", en: "Change password" },
+  currentPasswordPlaceholder: { ko: "현재 비밀번호", en: "Current password" },
+  newPasswordPlaceholder: { ko: "새 비밀번호 (8자 이상)", en: "New password (min 8 characters)" },
+  confirmNewPasswordPlaceholder: { ko: "새 비밀번호 확인", en: "Confirm new password" },
+  changePasswordButton: { ko: "변경", en: "Change" },
+  passwordMismatchError: { ko: "새 비밀번호가 서로 일치하지 않습니다", en: "New passwords don't match" },
+  passwordChangedToast: { ko: "비밀번호가 변경되었습니다", en: "Password changed" },
+  passwordChangeFailToast: { ko: "비밀번호 변경 실패: {msg}", en: "Failed to change password: {msg}" },
   screenTitle: { ko: "화면", en: "Display" },
   themeLabel: { ko: "테마", en: "Theme" },
   notificationsTitle: { ko: "알림", en: "Notifications" },
