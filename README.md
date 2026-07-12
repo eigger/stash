@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.3.1**
+> Current release: **v0.3.2**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -22,7 +22,7 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 - Nested locations (rooms / shelves / boxes) and categories
 - Items with quantity, low-stock threshold, expiry & warranty dates, price, photo, notes
 - Unified `Item` + `Barcode` model — existing UPC/EAN, self-issued internal QR (deep-links to the item), or a Matter pairing code, all as one barcode type
-- Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code
+- Continuous camera scanning: **Restock (+1)** / **Consume (−1)** modes, no screen transition between scans; camera scan is also available when registering an item manually or adding a barcode/Matter code. Tuned for real-world speed/accuracy (format hints, higher resolution, continuous autofocus), with an audible beep, haptic buzz, and a low-light flash toggle
 - Pluggable external product lookup (Open Food Facts, UPCItemDB, Naver Shopping) — pick which providers to use per barcode scan, or turn lookup off entirely
 - Dashboard: total inventory value, low-stock and expiring-soon items front and center
 - Shopping list built from low-stock items — buy, tap `+`, and it drops off automatically

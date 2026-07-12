@@ -394,6 +394,33 @@ button:disabled {
   object-fit: cover;
 }
 
+.torch-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.torch-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.torch-button.active {
+  background: var(--color-primary);
+}
+
 .scanner-overlay {
   position: absolute;
   inset: 0;

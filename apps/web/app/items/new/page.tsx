@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { apiJson } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
 import { RECENT_CATEGORIES_KEY, RECENT_LOCATIONS_KEY, loadRecentIds, pushRecentId } from "../../../lib/recentSelections";
+import { playBeep, unlockBeepAudio } from "../../../lib/beep";
+import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
+import { TorchButton } from "../../../components/TorchButton";
 import type { Item, Location, Category } from "../../../lib/types";
 
 // 바코드 없는 물건 등록 폼 — 필수 입력은 이름뿐이고 나머지는 전부 선택값으로 두어
@@ -34,8 +37,10 @@ export default function NewItemPage() {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -51,17 +56,22 @@ export default function NewItemPage() {
   // 카메라 스캔 — /scan과 달리 여기서는 값만 입력란에 채우고 등록은 사용자가 직접 누른다.
   useEffect(() => {
     if (!scanning || !videoRef.current) return;
-    const reader = new BrowserMultiFormatReader();
+    const reader = new BrowserMultiFormatReader(SCAN_HINTS);
     let cancelled = false;
 
     reader
-      .decodeFromConstraints({ video: { facingMode: "environment" } }, videoRef.current, (result) => {
+      .decodeFromConstraints({ video: SCAN_VIDEO_CONSTRAINTS }, videoRef.current, (result) => {
         if (cancelled || !result) return;
+        playBeep();
         setBarcodeValue(result.getText());
         setScanning(false);
       })
       .then((controls) => {
         controlsRef.current = controls;
+        const stream = videoRef.current?.srcObject;
+        if (stream instanceof MediaStream) {
+          setTorchSupported(BrowserCodeReader.mediaStreamIsTorchCompatible(stream));
+        }
       })
       .catch(() => {
         setScanError(t("cameraError"));
@@ -71,9 +81,21 @@ export default function NewItemPage() {
     return () => {
       cancelled = true;
       controlsRef.current?.stop();
+      setTorchSupported(false);
+      setTorchOn(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning]);
+
+  async function toggleTorch() {
+    const next = !torchOn;
+    try {
+      await controlsRef.current?.switchTorch?.(next);
+      setTorchOn(next);
+    } catch {
+      // 토치 전환 실패는 스캔 자체를 막을 이유가 안 된다 — 조용히 무시.
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -187,7 +209,14 @@ export default function NewItemPage() {
             onChange={(e) => setBarcodeValue(e.target.value)}
             style={{ flex: 1 }}
           />
-          <button type="button" className="secondary" onClick={() => setScanning((s) => !s)}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              unlockBeepAudio();
+              setScanning((s) => !s);
+            }}
+          >
             {scanning ? t("cancelScanButton") : t("scanBarcodeButton")}
           </button>
         </div>
@@ -204,6 +233,9 @@ export default function NewItemPage() {
                 <span className="scan-line" />
               </div>
             </div>
+            {torchSupported && (
+              <TorchButton active={torchOn} onClick={toggleTorch} label={t(torchOn ? "torchOnLabel" : "torchOffLabel")} />
+            )}
           </div>
         )}
         {scanError && <p className="error-text">{scanError}</p>}
