@@ -419,7 +419,7 @@ export default function ItemDetailPage() {
 
         <label>
           {t("photoUploadLabel")}
-          <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} disabled={uploading} />
+          <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
         </label>
 
         <div style={{ display: "flex", gap: 8 }}>
