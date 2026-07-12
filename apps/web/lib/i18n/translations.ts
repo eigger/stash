@@ -186,6 +186,10 @@ const dict = {
   currencyPlaceholder: { ko: "통화 (예: KRW)", en: "Currency (e.g. USD)" },
   itemCreatedToast: { ko: "아이템이 등록되었습니다", en: "Item added" },
   itemCreateFailToast: { ko: "등록 실패: {msg}", en: "Failed to add: {msg}" },
+  photoUploadFailToast: {
+    ko: "아이템은 등록됐지만 사진 업로드에는 실패했습니다 — 상세 페이지에서 다시 시도하세요",
+    en: "Item added, but the photo failed to upload — try again from the item detail page",
+  },
   itemTypeConsumable: { ko: "소모품", en: "Consumable" },
   itemTypeAsset: { ko: "자산(기기)", en: "Asset" },
   conditionLabel: { ko: "상태", en: "Condition" },
@@ -438,6 +442,9 @@ const dict = {
   restoreFailFallback: { ko: "복원 실패", en: "Restore failed" },
   restoreSuccessToast: { ko: "복원이 완료되었습니다", en: "Restore complete" },
   languageLabel: { ko: "언어", en: "Language" },
+  currencyDefaultLabel: { ko: "기본 통화", en: "Default currency" },
+  currencyKrwOption: { ko: "원 (KRW)", en: "KRW" },
+  currencyUsdOption: { ko: "달러 (USD)", en: "USD" },
 
   // theme toggle
   themeLight: { ko: "라이트", en: "Light" },

@@ -406,14 +406,16 @@ export default function ItemDetailPage() {
           </>
         )}
 
-        <label>
-          {t("warrantyLabel")}
-          <input
-            type="date"
-            value={item.warrantyExpiresAt?.slice(0, 10) ?? ""}
-            onChange={(e) => updateField("warrantyExpiresAt", e.target.value || null)}
-          />
-        </label>
+        {item.itemType === "ASSET" && (
+          <label>
+            {t("warrantyLabel")}
+            <input
+              type="date"
+              value={item.warrantyExpiresAt?.slice(0, 10) ?? ""}
+              onChange={(e) => updateField("warrantyExpiresAt", e.target.value || null)}
+            />
+          </label>
+        )}
 
         <label>
           {t("photoUploadLabel")}
