@@ -230,6 +230,7 @@ button:disabled {
 }
 
 .item-card .info .name {
+  display: block;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -239,6 +240,16 @@ button:disabled {
 .item-card .meta {
   color: var(--color-text-muted);
   font-size: 0.85rem;
+}
+
+/* 이력 목록의 날짜/작성자 줄 전용 — 오른쪽 수량 변동값의 폭이 행마다 조금씩 달라서
+   (+3개 vs -1개 등) 이 줄이 어떤 행은 한 줄로, 어떤 행은 두 줄로 감기며 목록이
+   들쭉날쭉해 보였다. 한 줄로 고정하고 넘치면 말줄임한다. */
+.history-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .qty-stepper {
@@ -349,7 +360,8 @@ button:disabled {
   display: block;
 }
 
-.bottom-nav .scan-tab {
+.bottom-nav .scan-tab,
+.bottom-nav .scan-tab.active {
   color: var(--color-primary-text);
 }
 
@@ -465,12 +477,28 @@ button:disabled {
 }
 
 .streak-banner {
-  background: var(--color-success);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
   border-radius: 12px;
   padding: 12px;
   text-align: center;
   margin-top: 12px;
+}
+
+/* 반복적으로 누르는 조작(스캔 모드 전환, 목록 일괄 작업 등)을 한 손 조작 시 엄지가
+   자연스럽게 닿는 하단 내비게이션 바로 위에 고정한다 — 화면 위쪽까지 손을 뻗지 않아도 되게. */
+.sticky-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  z-index: 40;
 }
 
 .toast-stack {
@@ -515,15 +543,30 @@ button:disabled {
 }
 
 .toast-success {
-  background: var(--color-success);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .tree-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 0;
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.tree-row-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tree-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .fab-row {
