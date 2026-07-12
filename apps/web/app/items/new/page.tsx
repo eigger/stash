@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { apiJson } from "../../../lib/api";
+import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
 import { RECENT_CATEGORIES_KEY, RECENT_LOCATIONS_KEY, loadRecentIds, pushRecentId } from "../../../lib/recentSelections";
+import { loadDefaultCurrency } from "../../../lib/currency";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
@@ -34,8 +35,10 @@ export default function NewItemPage() {
   const [expiryDate, setExpiryDate] = useState("");
   const [warrantyExpiresAt, setWarrantyExpiresAt] = useState("");
   const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState("");
+  const [currency, setCurrency] = useState(() => loadDefaultCurrency());
   const [notes, setNotes] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -99,6 +102,24 @@ export default function NewItemPage() {
     }
   }
 
+  // 아이템이 아직 없어 attachments API(itemId 필요)로 바로 못 올리므로, 여기서는 파일만
+  // 들고 있다가 아이템 생성 직후(handleSubmit)에 업로드한다. 미리보기는 로컬 blob URL로.
+  function handlePhotoSelect(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setPhotoFile(file);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -123,6 +144,25 @@ export default function NewItemPage() {
       });
       if (locationId) pushRecentId(RECENT_LOCATIONS_KEY, locationId);
       if (categoryId) pushRecentId(RECENT_CATEGORIES_KEY, categoryId);
+
+      if (photoFile) {
+        try {
+          const formData = new FormData();
+          formData.append("file", photoFile);
+          const res = await apiFetch(`/api/attachments?itemId=${item.id}`, { method: "POST", body: formData });
+          if (!res.ok) throw new Error();
+          const attachment = await res.json();
+          await apiJson(`/api/items/${item.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ photoUrl: `${API_URL}/api/attachments/file/${attachment.filePath}` }),
+          });
+        } catch {
+          // 아이템 자체는 이미 등록됐으니, 사진 업로드 실패로 등록 자체를 막지 않는다 —
+          // 상세 페이지에서 다시 올리면 된다.
+          show(t("photoUploadFailToast"), "error");
+        }
+      }
+
       show(t("itemCreatedToast"), "success");
       router.push(`/items/${item.id}`);
     } catch (err: any) {
@@ -278,9 +318,19 @@ export default function NewItemPage() {
             <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
           </label>
         )}
+        {itemType === "ASSET" && (
+          <label>
+            {t("warrantyOptional")}
+            <input type="date" value={warrantyExpiresAt} onChange={(e) => setWarrantyExpiresAt(e.target.value)} />
+          </label>
+        )}
+        {photoPreviewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoPreviewUrl} alt="" style={{ width: "100%", borderRadius: 12 }} />
+        )}
         <label>
-          {t("warrantyOptional")}
-          <input type="date" value={warrantyExpiresAt} onChange={(e) => setWarrantyExpiresAt(e.target.value)} />
+          {t("photoUploadLabel")}
+          <input type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} />
         </label>
         <div style={{ display: "flex", gap: 8 }}>
           <input

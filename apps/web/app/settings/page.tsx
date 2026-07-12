@@ -9,6 +9,7 @@ import { useLocale } from "../../lib/i18n/locale-context";
 import { PushNotificationSettings } from "../../components/PushNotificationSettings";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageToggle } from "../../components/LanguageToggle";
+import { CurrencyToggle } from "../../components/CurrencyToggle";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -119,6 +120,8 @@ export default function SettingsPage() {
         <ThemeToggle />
         <p className="meta" style={{ marginTop: 12 }}>{t("languageLabel")}</p>
         <LanguageToggle />
+        <p className="meta" style={{ marginTop: 12 }}>{t("currencyDefaultLabel")}</p>
+        <CurrencyToggle />
       </div>
 
       <div className="card">
