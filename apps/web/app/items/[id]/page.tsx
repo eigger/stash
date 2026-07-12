@@ -40,6 +40,7 @@ export default function ItemDetailPage() {
   const [maintDate, setMaintDate] = useState("");
   const [maintDescription, setMaintDescription] = useState("");
   const [maintCost, setMaintCost] = useState("");
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -253,6 +254,39 @@ export default function ItemDetailPage() {
     }
   }
 
+  // 사진(photoUrl)과 달리 이 목록은 item.photoUrl을 건드리지 않는다 — 영수증·설명서·
+  // 보증서 등 대표 사진이 아닌 부가 파일을 여러 개 쌓아두는 용도.
+  async function handleAttachmentUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !item) return;
+    setAttachmentUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiFetch(`/api/attachments?itemId=${item.id}`, { method: "POST", body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(typeof body?.error === "string" ? body.error : t("uploadFailFallback"));
+      }
+      await refresh();
+      show(t("attachmentUploadedToast"), "success");
+    } catch (err: any) {
+      show(err.message, "error");
+    } finally {
+      setAttachmentUploading(false);
+    }
+  }
+
+  async function removeAttachment(attachmentId: string) {
+    try {
+      await apiJson(`/api/attachments/${attachmentId}`, { method: "DELETE" });
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
   async function handleDelete() {
     if (!item) return;
     if (!confirm(t("confirmDeleteItem", { name: item.name }))) return;
@@ -447,7 +481,9 @@ export default function ItemDetailPage() {
 
       <div className="card">
         <h2 style={{ marginTop: 0 }}>{t("barcodeSectionTitle")}</h2>
-        {item.barcodes.length === 0 && <p className="meta">{t("noBarcodes")}</p>}
+        {item.barcodes.length === 0 && (
+          <p className="meta">{item.itemType === "ASSET" ? t("assetNoLabelHint") : t("noBarcodes")}</p>
+        )}
         {item.barcodes.map((b) => (
           <div key={b.id} className="tree-row">
             <div className="tree-row-value">
@@ -588,6 +624,33 @@ export default function ItemDetailPage() {
           </div>
         </div>
       )}
+
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>{t("attachmentsSectionTitle")}</h2>
+        {(!item.attachments || item.attachments.length === 0) && <p className="meta">{t("noAttachments")}</p>}
+        {item.attachments?.map((a) => (
+          <div key={a.id} className="tree-row">
+            <div className="tree-row-value">
+              <span className="badge badge-muted">
+                {a.mimeType === "application/pdf" ? t("attachmentTypePdf") : t("attachmentTypeImage")}
+              </span>{" "}
+              {formatDateTime(a.uploadedAt)}
+            </div>
+            <div className="tree-row-actions">
+              <a href={`${API_URL}/api/attachments/file/${a.filePath}`} target="_blank" rel="noreferrer">
+                {t("openAttachmentLabel")}
+              </a>
+              <button className="secondary" onClick={() => removeAttachment(a.id)}>
+                {t("delete")}
+              </button>
+            </div>
+          </div>
+        ))}
+        <label>
+          {t("addAttachmentLabel")}
+          <input type="file" accept="image/*,application/pdf" onChange={handleAttachmentUpload} disabled={attachmentUploading} />
+        </label>
+      </div>
 
       {item.movements && item.movements.length > 0 && (
         <div className="card">

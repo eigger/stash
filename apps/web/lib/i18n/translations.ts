@@ -123,7 +123,7 @@ const dict = {
     en: "Synced {synced} queued scan(s) ({rejected} rejected)",
   },
   scanAssetMatchedToast: { ko: "자산 확인됨: {name}", en: "Asset confirmed: {name}" },
-  scanAssetMatchedLabel: { ko: "자산 확인됨", en: "Asset confirmed" },
+  convertToAssetButton: { ko: "자산으로 전환", en: "Convert to asset" },
 
   // item card
   noLocation: { ko: "위치 없음", en: "No location" },
@@ -227,6 +227,10 @@ const dict = {
   currencyLabel: { ko: "통화", en: "Currency" },
   barcodeSectionTitle: { ko: "바코드 / 식별자", en: "Barcodes / identifiers" },
   noBarcodes: { ko: "등록된 바코드가 없습니다.", en: "No barcodes yet." },
+  assetNoLabelHint: {
+    ko: "아직 라벨이 없습니다. QR을 발급해 인쇄하면 나중에 스캔만으로 이 기기를 바로 찾을 수 있습니다.",
+    en: "No label yet. Issue a QR and print it so you can find this device again with a single scan.",
+  },
   sourceGenerated: { ko: "자체발급", en: "Self-issued" },
   sourceMatter: { ko: "Matter", en: "Matter" },
   sourceExisting: { ko: "기존", en: "Existing" },
@@ -253,6 +257,16 @@ const dict = {
   maintenanceDescriptionPlaceholder: { ko: "정비 내용 (예: 배터리 교체)", en: "Description (e.g. battery replacement)" },
   maintenanceCostPlaceholder: { ko: "비용 (선택)", en: "Cost (optional)" },
   addMaintenanceRecordButton: { ko: "정비 이력 추가", en: "Add record" },
+  attachmentsSectionTitle: { ko: "첨부 파일", en: "Attachments" },
+  noAttachments: { ko: "첨부된 파일이 없습니다.", en: "No attachments yet." },
+  attachmentTypePdf: { ko: "PDF", en: "PDF" },
+  attachmentTypeImage: { ko: "이미지", en: "Image" },
+  openAttachmentLabel: { ko: "열기", en: "Open" },
+  addAttachmentLabel: {
+    ko: "영수증·설명서·보증서 등 파일 추가",
+    en: "Add a file (receipt, manual, warranty, etc.)",
+  },
+  attachmentUploadedToast: { ko: "파일이 추가되었습니다", en: "File added" },
 
   // locations
   locationsTitle: { ko: "위치", en: "Locations" },
