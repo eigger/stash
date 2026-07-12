@@ -318,13 +318,13 @@ export default function ItemDetailPage() {
         {item.barcodes.length === 0 && <p className="meta">{t("noBarcodes")}</p>}
         {item.barcodes.map((b) => (
           <div key={b.id} className="tree-row">
-            <div>
+            <div className="tree-row-value">
               <span className="badge badge-muted">
                 {b.source === "GENERATED" ? t("sourceGenerated") : b.source === "MATTER" ? t("sourceMatter") : t("sourceExisting")}
               </span>{" "}
               {b.value}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="tree-row-actions">
               <a href={`${API_URL}/api/barcodes/${b.id}/label.png`} target="_blank" rel="noreferrer">
                 {t("viewLabel")}
               </a>

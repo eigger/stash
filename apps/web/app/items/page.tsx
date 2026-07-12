@@ -210,7 +210,7 @@ export default function ItemsPage() {
   if (loading || !user) return null;
 
   return (
-    <main className="container">
+    <main className="container" style={selectMode ? { paddingBottom: 84 } : undefined}>
       <div className="page-header">
         <h1>{t("itemsTitle")}</h1>
         <div style={{ display: "flex", gap: 8 }}>
@@ -283,25 +283,6 @@ export default function ItemsPage() {
               ))}
             </select>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              disabled={selected.size === 0 || bulkBusy || (!bulkLocationId && !bulkCategoryId)}
-              onClick={handleBulkApply}
-              style={{ flex: 1 }}
-            >
-              {t("bulkApplyButton")}
-            </button>
-            <button
-              type="button"
-              className="danger"
-              disabled={selected.size === 0 || bulkBusy}
-              onClick={handleBulkDelete}
-              style={{ flex: 1 }}
-            >
-              {t("bulkDeleteButton")}
-            </button>
-          </div>
         </div>
       )}
 
@@ -320,6 +301,31 @@ export default function ItemsPage() {
         <button className="secondary" disabled={busy} onClick={() => setPage((p) => p + 1)} style={{ width: "100%", marginTop: 8 }}>
           {busy ? t("loading") : t("loadMoreButton")}
         </button>
+      )}
+
+      {selectMode && (
+        <div className="sticky-bottom-bar">
+          <strong style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: "0.85rem" }}>
+            {t("itemsSelectedLabel", { n: selected.size })}
+          </strong>
+          <button
+            type="button"
+            disabled={selected.size === 0 || bulkBusy || (!bulkLocationId && !bulkCategoryId)}
+            onClick={handleBulkApply}
+            style={{ flex: 1, whiteSpace: "nowrap" }}
+          >
+            {t("bulkApplyButton")}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            disabled={selected.size === 0 || bulkBusy}
+            onClick={handleBulkDelete}
+            style={{ flex: 1, whiteSpace: "nowrap" }}
+          >
+            {t("bulkDeleteButton")}
+          </button>
+        </div>
       )}
     </main>
   );

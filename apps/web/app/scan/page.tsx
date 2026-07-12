@@ -179,29 +179,10 @@ export default function ScanPage() {
   if (loading || !user) return null;
 
   return (
-    <main className="container">
+    <main className="container" style={{ paddingBottom: 84 }}>
       <h1>{t("scanTitle")}</h1>
       <p className="scan-hint">{t("scanHint")}</p>
       {queueCount > 0 && <p className="scan-hint">{t("scanQueuePendingHint", { count: queueCount })}</p>}
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button
-          type="button"
-          className={mode === "restock" ? "" : "secondary"}
-          onClick={() => setMode("restock")}
-          style={{ flex: 1 }}
-        >
-          {t("scanModeRestock")}
-        </button>
-        <button
-          type="button"
-          className={mode === "consume" ? "" : "secondary"}
-          onClick={() => setMode("consume")}
-          style={{ flex: 1 }}
-        >
-          {t("scanModeConsume")}
-        </button>
-      </div>
 
       {cameraError ? (
         <p className="error-text">{cameraError}</p>
@@ -227,7 +208,7 @@ export default function ScanPage() {
           {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
           {lastResult.item.name} ({t("quantityLabel")}{" "}
           {lastResult.item.quantity}){" "}
-          <a href={`/items/${lastResult.item.id}`} style={{ color: "#fff", textDecoration: "underline" }}>
+          <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline" }}>
             {t("viewDetail")}
           </a>
         </div>
@@ -243,6 +224,25 @@ export default function ScanPage() {
           {t("manualSubmit")}
         </button>
       </form>
+
+      <div className="sticky-bottom-bar">
+        <button
+          type="button"
+          className={mode === "restock" ? "" : "secondary"}
+          onClick={() => setMode("restock")}
+          style={{ flex: 1 }}
+        >
+          {t("scanModeRestock")}
+        </button>
+        <button
+          type="button"
+          className={mode === "consume" ? "" : "secondary"}
+          onClick={() => setMode("consume")}
+          style={{ flex: 1 }}
+        >
+          {t("scanModeConsume")}
+        </button>
+      </div>
     </main>
   );
 }

@@ -92,7 +92,7 @@ function HistoryPageInner() {
             <a href={`/items/${m.item.id}`} className="name" style={{ color: "inherit", textDecoration: "none" }}>
               {m.item.name}
             </a>
-            <div className="meta">
+            <div className="meta history-meta">
               {formatDateTime(m.occurredAt)}
               {m.user && ` · ${m.user.name}`}
             </div>
@@ -100,7 +100,15 @@ function HistoryPageInner() {
               <span className="badge badge-muted">{t(REASON_KEY[m.reason])}</span>
             </div>
           </div>
-          <div style={{ fontWeight: 700, color: m.delta >= 0 ? "var(--color-success)" : "var(--color-danger)" }}>
+          <div
+            style={{
+              fontWeight: 700,
+              color: m.delta >= 0 ? "var(--color-success)" : "var(--color-danger)",
+              flexShrink: 0,
+              minWidth: 56,
+              textAlign: "right",
+            }}
+          >
             {m.delta > 0 ? `+${m.delta}` : m.delta}
             {m.item.unit ?? ""}
           </div>

@@ -132,7 +132,7 @@ const dict = {
   bulkClearLocationOption: { ko: "위치 없음으로 비우기", en: "Clear location" },
   bulkClearCategoryOption: { ko: "카테고리 없음으로 비우기", en: "Clear category" },
   bulkApplyButton: { ko: "적용", en: "Apply" },
-  bulkDeleteButton: { ko: "선택 삭제", en: "Delete selected" },
+  bulkDeleteButton: { ko: "삭제", en: "Delete" },
   confirmBulkDeleteItems: {
     ko: "선택한 {n}개 아이템을 휴지통으로 보낼까요?",
     en: "Move {n} selected item(s) to trash?",
