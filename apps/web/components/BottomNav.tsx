@@ -68,11 +68,12 @@ function MoreIcon() {
   );
 }
 
+// 지도 위치가 아니라 냉장고/선반/상자 같은 보관 위치라 핀 아이콘 대신 선반(칸막이) 모양을 쓴다.
 function LocationIcon({ size = 24 }: { size?: number }) {
   return (
     <svg {...iconProps()} width={size} height={size}>
-      <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z" />
-      <circle cx="12" cy="10" r="2.5" />
+      <rect x="4" y="3" width="16" height="18" rx="1.5" />
+      <path d="M4 9h16M4 15h16" />
     </svg>
   );
 }
