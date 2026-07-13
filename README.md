@@ -11,7 +11,7 @@
 
 Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
 
-> Current release: **v0.6.0**
+> Current release: **v0.6.2**
 
 Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 
@@ -35,6 +35,7 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 - Expiry / warranty push notifications, plus a weekly low-stock digest (Web Push)
 - Trash (soft delete) with restore and 30-day auto-purge
 - Offline-friendly PWA: cached app shell and cached item list/detail responses for offline viewing, home-screen shortcuts for Scan / Add item, and an offline scan queue that auto-syncs when back online
+- Bottom navigation is centered in a max-width column on wide screens instead of stretching edge to edge; **More** opens as a slide-up bottom sheet (grouped shortcuts to locations, categories, history, labels, trash, settings, family accounts, integrations) instead of a separate page
 - Outbound inventory webhook for printer / label-device automations (e.g. Home Assistant), with the last delivery failure surfaced in Settings
 - Admin / general roles, first-admin bootstrap, self-service password change, backup/restore, ko/en i18n, light/dark theme
 

@@ -1,5 +1,7 @@
-const CACHE_NAME = "stash-shell-v2";
+const CACHE_NAME = "stash-shell-v3";
 // 오프라인에서도 하단 탭 대부분이 최소한 앱 셸(껍데기)은 뜨도록 주요 화면을 미리 캐시해둔다.
+// 주의: cache.addAll()은 하나라도 404면 전체가 실패한다 — 존재하지 않는 라우트를 넣으면
+// 이 목록의 나머지 화면까지 전부 캐시되지 않으니, 라우트를 지우거나 옮길 때 같이 갱신할 것.
 const SHELL_ASSETS = [
   "/",
   "/login",
@@ -11,7 +13,6 @@ const SHELL_ASSETS = [
   "/history",
   "/shopping",
   "/trash",
-  "/backup",
   "/settings",
   "/offline",
 ];

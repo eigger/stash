@@ -377,6 +377,9 @@ button:disabled {
   color: var(--color-primary-text);
 }
 
+/* 배경/구분선은 화면 전체 폭으로 깔아서(풀블리드) 넓은 화면에서 가운데만 칠해지다 만
+   것처럼 뚝 끊겨 보이지 않게 하고, 실제 탭 내용만 .bottom-nav-inner로 폭을 제한해
+   중앙에 모은다 — 모바일 폭에서는 기존과 동일하게 꽉 차 보인다. */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -387,10 +390,24 @@ button:disabled {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   display: flex;
+  justify-content: center;
   z-index: 50;
 }
 
-.bottom-nav a {
+.bottom-nav-inner {
+  display: flex;
+  width: 100%;
+  max-width: 480px;
+}
+
+@media (min-width: 640px) {
+  .bottom-nav-inner {
+    max-width: 640px;
+  }
+}
+
+.bottom-nav a,
+.bottom-nav .bottom-nav-more {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -400,9 +417,14 @@ button:disabled {
   color: var(--color-text-muted);
   text-decoration: none;
   font-size: 0.72rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
-.bottom-nav a.active {
+.bottom-nav a.active,
+.bottom-nav .bottom-nav-more.active {
   color: var(--color-primary);
 }
 
@@ -418,13 +440,16 @@ button:disabled {
   display: block;
 }
 
+/* 스캔 탭 라벨은 원형 아이콘 배경색(--color-primary-text)이 아니라 일반 네비 배경 위에
+   놓이므로, 라이트 테마에서 흰 글자가 흰 배경에 묻혀 안 보이던 버그를 --color-primary로 수정 */
 .bottom-nav .scan-tab,
 .bottom-nav .scan-tab.active {
-  color: var(--color-primary-text);
+  color: var(--color-primary);
 }
 
 .bottom-nav .scan-tab .icon-wrap {
   background: var(--color-primary);
+  color: var(--color-primary-text);
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -433,6 +458,87 @@ button:disabled {
   justify-content: center;
   margin-top: -18px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* 더보기 바텀시트 */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--color-modal-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 90;
+}
+
+.sheet-card {
+  background: var(--color-surface);
+  border-radius: 16px 16px 0 0;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 480px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+  animation: sheet-up 0.18s ease;
+}
+
+@media (min-width: 640px) {
+  .sheet-card {
+    max-width: 640px;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  margin: 0 auto 12px;
+}
+
+.sheet-group-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 14px 0 6px;
+}
+
+.sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 64px;
+  padding: 10px 6px;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+
+.sheet-item:active {
+  transform: translateY(0.5px);
 }
 
 .scanner-frame {
