@@ -51,31 +51,31 @@ Home screen after login. Shows total inventory value, **Low stock**, **Expiring 
 
 ### 2. Scan
 
-Continuous barcode / QR scanning. Pick **Restock (+1)** or **Consume (−1)**, then keep scanning without leaving the screen — matched items adjust quantity, unknown barcodes auto-create an item. Camera-less devices can type the barcode in manually.
+Scan barcodes or QR codes continuously without changing screens. Choose between **Restock (+1)** or **Consume (-1)** modes to update inventory instantly. It supports audible beeps, haptics, and a flashlight toggle for low-light scanning. Unknown barcodes are automatically created and open a mini-sheet to assign a location and threshold immediately. Manual entry is also available for devices without cameras.
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/02-scan.png" alt="Scan" width="340" />
 
 ### 3. Items
 
-Every item with search, **location** / **category** filters, and **sort** (recently added / lowest quantity / expiring soonest). Export or import the whole list as CSV from here.
+Browse all items with search, **location** / **category** filters, and **sorting** (recently added, lowest quantity, expiring soonest). You can bulk-select items to move their location/category or delete them at once, as well as import/export the entire list as CSV.
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/03-items.png" alt="Items" width="340" />
 
 ### 4. Item detail
 
-Edit quantity, location, category, low-stock threshold, expiry / warranty dates, price, and photo. Attach existing barcodes, issue an internal QR, add a Matter code, send a print request, or upload attachments (receipts, manuals, warranties as PDF/images). Quantity, maintenance, and audit history are listed below.
+Manage quantity, location, category, low-stock threshold, expiry and warranty dates, price, and photos. You can associate multiple barcodes, generate internal QR labels, add Matter codes, send print requests, or upload attachments (receipts, manuals, warranties as PDF/images). Detailed adjustment logs, maintenance logs, and audit histories are listed at the bottom.
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/04-item-detail.png" alt="Item detail" width="340" />
 
 ### 5. Shopping list
 
-Low-stock items as a checklist. Tap `+` for each one you buy — once it climbs back above its threshold it drops off the list automatically.
+Displays low-stock items and manually added items as a checklist. Tap `+` for each item you buy; once its stock rises above the threshold, it drops off the list automatically. Supports custom notes and purchase checkmarks.
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/05-shopping.png" alt="Shopping list" width="340" />
 
 ### 6. More
 
-Grouped menu: **Structure** (locations, categories), **Actions & records** (shopping list, labels, trash), and **Account & integrations** (settings, family accounts, integration keys).
+A slide-up bottom sheet menu accessed via the bottom navigation bar. It is cleanly grouped into: **Structure** (manage locations & categories), **Actions & records** (maintenance history, print labels, trash), and **Account & integrations** (settings, family accounts, integration settings).
 
 <img src="https://raw.githubusercontent.com/eigger/stash/master/docs/screenshots/en/06-more.png" alt="More menu" width="340" />
 

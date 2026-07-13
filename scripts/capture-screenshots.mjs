@@ -95,7 +95,11 @@ async function captureLocale(locale) {
   await page.goto(`${BASE}/shopping`, { waitUntil: "domcontentloaded" });
   await shot(page, path.join(dir, "05-shopping.png"));
 
-  await page.goto(`${BASE}/backup`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+  await waitReady(page);
+  await page.locator("button.bottom-nav-more").click();
+  await page.waitForSelector(".sheet-card");
+  await page.waitForTimeout(300);
   await shot(page, path.join(dir, "06-more.png"));
 
   await browser.close();
