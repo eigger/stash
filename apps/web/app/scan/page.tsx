@@ -398,12 +398,11 @@ export default function ScanPage() {
         </button>
       </form>
 
-      <div className="sticky-bottom-bar">
+      <div className="scan-mode-toggle">
         <button
           type="button"
           className={mode === "restock" ? "" : "secondary"}
           onClick={() => setMode("restock")}
-          style={{ flex: 1 }}
         >
           {t("scanModeRestock")}
         </button>
@@ -411,7 +410,6 @@ export default function ScanPage() {
           type="button"
           className={mode === "consume" ? "" : "secondary"}
           onClick={() => setMode("consume")}
-          style={{ flex: 1 }}
         >
           {t("scanModeConsume")}
         </button>

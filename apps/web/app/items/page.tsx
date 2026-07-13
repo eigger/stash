@@ -314,26 +314,28 @@ export default function ItemsPage() {
 
       {selectMode && (
         <div className="sticky-bottom-bar">
-          <strong style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: "0.85rem" }}>
-            {t("itemsSelectedLabel", { n: selected.size })}
-          </strong>
-          <button
-            type="button"
-            disabled={selected.size === 0 || bulkBusy || (!bulkLocationId && !bulkCategoryId)}
-            onClick={handleBulkApply}
-            style={{ flex: 1, whiteSpace: "nowrap" }}
-          >
-            {t("bulkApplyButton")}
-          </button>
-          <button
-            type="button"
-            className="danger"
-            disabled={selected.size === 0 || bulkBusy}
-            onClick={handleBulkDelete}
-            style={{ flex: 1, whiteSpace: "nowrap" }}
-          >
-            {t("bulkDeleteButton")}
-          </button>
+          <div className="sticky-bottom-bar-inner">
+            <strong style={{ flexShrink: 0, whiteSpace: "nowrap", fontSize: "0.85rem" }}>
+              {t("itemsSelectedLabel", { n: selected.size })}
+            </strong>
+            <button
+              type="button"
+              disabled={selected.size === 0 || bulkBusy || (!bulkLocationId && !bulkCategoryId)}
+              onClick={handleBulkApply}
+              style={{ flex: 1, whiteSpace: "nowrap" }}
+            >
+              {t("bulkApplyButton")}
+            </button>
+            <button
+              type="button"
+              className="danger"
+              disabled={selected.size === 0 || bulkBusy}
+              onClick={handleBulkDelete}
+              style={{ flex: 1, whiteSpace: "nowrap" }}
+            >
+              {t("bulkDeleteButton")}
+            </button>
+          </div>
         </div>
       )}
     </main>

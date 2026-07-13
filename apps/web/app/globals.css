@@ -677,19 +677,54 @@ button:disabled {
 }
 
 /* 반복적으로 누르는 조작(스캔 모드 전환, 목록 일괄 작업 등)을 한 손 조작 시 엄지가
-   자연스럽게 닿는 하단 내비게이션 바로 위에 고정한다 — 화면 위쪽까지 손을 뻗지 않아도 되게. */
+   자연스럽게 닿는 하단 내비게이션 바로 위에 고정한다 — 화면 위쪽까지 손을 뻗지 않아도 되게.
+   배경/구분선은 .bottom-nav와 같은 이유로 풀블리드, 버튼들은 .sticky-bottom-bar-inner로
+   폭을 제한해 중앙에 모아 바로 아래 바텀 네비와 좌우 정렬이 어긋나지 않게 한다. */
 .sticky-bottom-bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  justify-content: center;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   z-index: 40;
+}
+
+.sticky-bottom-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 16px;
+}
+
+@media (min-width: 640px) {
+  .sticky-bottom-bar-inner {
+    max-width: 640px;
+  }
+}
+
+/* 스캔 모드 전환(입고/소비)은 항목이 둘뿐이라 폭이 꽉 찬 트레이보다, 내용 크기에 맞는
+   버튼 두 개가 바텀 네비 위에 떠 있는 모습이 더 자연스럽다 — 배경 바/구분선 없이 버튼만. */
+.scan-mode-toggle {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-height) + 12px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.scan-mode-toggle button {
+  pointer-events: auto;
+  padding: 10px 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .toast-stack {
