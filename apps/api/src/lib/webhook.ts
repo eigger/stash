@@ -72,8 +72,11 @@ export function buildWebhookPayload(
   event: InventoryWebhookEvent,
   item: WebhookItem,
   baseUrl: string,
+  barcodeId?: string,
 ): InventoryWebhookPayload {
-  const primary = item.barcodes.find((b) => b.isPrimary) ?? item.barcodes[0];
+  const target = barcodeId
+    ? item.barcodes.find((b) => b.id === barcodeId)
+    : (item.barcodes.find((b) => b.isPrimary) ?? item.barcodes[0]);
 
   return {
     event,
@@ -83,9 +86,9 @@ export function buildWebhookPayload(
     unit: item.unit,
     locationId: item.locationId,
     locationName: item.location?.name ?? null,
-    barcodeValue: primary?.value ?? null,
-    symbology: primary?.symbology ?? null,
-    labelImageUrl: primary ? buildLabelImageUrl(primary.id, baseUrl) : null,
+    barcodeValue: target?.value ?? null,
+    symbology: target?.symbology ?? null,
+    labelImageUrl: target ? buildLabelImageUrl(target.id, baseUrl) : null,
     timestamp: new Date().toISOString(),
   };
 }
@@ -97,12 +100,16 @@ export async function isInventoryWebhookConfigured(): Promise<boolean> {
 
 // Fire-and-forget: 웹훅 수신 쪽 문제(다운/타임아웃)가 재고 CRUD를 막아서는 안 되므로
 // 실패는 조용히 무시한다. 설정된 웹훅이 없으면 아무 것도 하지 않는다.
-export async function fireInventoryWebhook(event: InventoryWebhookEvent, item: WebhookItem): Promise<void> {
+export async function fireInventoryWebhook(
+  event: InventoryWebhookEvent,
+  item: WebhookItem,
+  barcodeId?: string,
+): Promise<void> {
   const url = await getSetting("INVENTORY_WEBHOOK_URL", process.env.INVENTORY_WEBHOOK_URL);
   if (!url) return;
 
   const baseUrl = (await getSetting("APP_PUBLIC_URL", process.env.APP_PUBLIC_URL)) || DEFAULT_APP_PUBLIC_URL;
-  const payload = buildWebhookPayload(event, item, baseUrl);
+  const payload = buildWebhookPayload(event, item, baseUrl, barcodeId);
 
   try {
     const res = await fetch(url, {

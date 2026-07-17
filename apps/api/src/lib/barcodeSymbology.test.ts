@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guessSymbology } from "./barcodeSymbology.js";
+import { guessSymbology } from "@stash/shared";
 
 describe("guessSymbology", () => {
   it("detects EAN13 for 13-digit values", () => {

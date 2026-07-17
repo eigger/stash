@@ -29,3 +29,5 @@ export const scanInputSchema = z.object({
 
 export type BarcodeInput = z.infer<typeof barcodeInputSchema>;
 export type ScanInput = z.infer<typeof scanInputSchema>;
+export type BarcodeSymbology = z.infer<typeof barcodeSymbologySchema>;
+export type BarcodeSource = z.infer<typeof barcodeSourceSchema>;

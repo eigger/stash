@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import { BarcodeFormat } from "@zxing/library";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
@@ -10,7 +11,7 @@ import { useLocale } from "../../../lib/i18n/locale-context";
 import { RECENT_CATEGORIES_KEY, RECENT_LOCATIONS_KEY, loadRecentIds, pushRecentId } from "../../../lib/recentSelections";
 import { loadDefaultCurrency } from "../../../lib/currency";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
-import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
+import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import type { Item, ItemCondition, ItemType, Location, Category } from "../../../lib/types";
 
@@ -32,6 +33,7 @@ export default function NewItemPage() {
   const [locationId, setLocationId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [barcodeValue, setBarcodeValue] = useState("");
+  const [scannedFormat, setScannedFormat] = useState<BarcodeFormat | null>(null);
   const [expiryDate, setExpiryDate] = useState("");
   const [warrantyExpiresAt, setWarrantyExpiresAt] = useState("");
   const [price, setPrice] = useState("");
@@ -70,6 +72,7 @@ export default function NewItemPage() {
         if (cancelled || !result) return;
         playBeep();
         setBarcodeValue(result.getText());
+        setScannedFormat(result.getBarcodeFormat());
         setScanning(false);
       })
       .then((controls) => {
@@ -136,6 +139,11 @@ export default function NewItemPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
+      // 카메라로 스캔한 값은 실제 포맷을 알고 있다 — 아이템 상세페이지의 수동 추가와
+      // 같은 원칙으로, 자산을 등록하며 Matter QR을 스캔했을 때만 MATTER로 태깅하고
+      // 심볼로지도 스캔 포맷 그대로 보낸다. 스캔 없이 손으로 입력했다면 서버가 값
+      // 모양으로 심볼로지를 추측하도록 아예 보내지 않는다.
+      const isMatter = scannedFormat === BarcodeFormat.QR_CODE && itemType === "ASSET";
       const item = await apiJson<Item>("/api/items", {
         method: "POST",
         body: JSON.stringify({
@@ -151,6 +159,8 @@ export default function NewItemPage() {
           currency: currency.trim() || null,
           notes: notes || null,
           barcodeValue: barcodeValue.trim() || undefined,
+          barcodeSource: isMatter ? "MATTER" : undefined,
+          barcodeSymbology: scannedFormat ? symbologyFromScanFormat(scannedFormat) : undefined,
         }),
       });
       if (locationId) pushRecentId(RECENT_LOCATIONS_KEY, locationId);
@@ -307,7 +317,10 @@ export default function NewItemPage() {
           <input
             placeholder={t("barcodePlaceholder")}
             value={barcodeValue}
-            onChange={(e) => setBarcodeValue(e.target.value)}
+            onChange={(e) => {
+              setBarcodeValue(e.target.value);
+              setScannedFormat(null);
+            }}
             style={{ flex: 1 }}
           />
           <button

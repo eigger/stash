@@ -206,10 +206,6 @@ const dict = {
     ko: "아이템은 등록됐지만 사진 업로드에는 실패했습니다 — 상세 페이지에서 다시 시도하세요",
     en: "Item added, but the photo failed to upload — try again from the item detail page",
   },
-  qrAndPrintSuccessToast: {
-    ko: "QR 생성 및 인쇄 요청이 완료되었습니다.",
-    en: "QR generated and print request sent.",
-  },
   registerButton: { ko: "등록", en: "Register" },
   registerAndPrintButton: { ko: "등록 및 인쇄", en: "Register & Print" },
   registering: { ko: "등록 중...", en: "Registering..." },
@@ -228,7 +224,6 @@ const dict = {
   // item detail
   qrIssuedToast: { ko: "내부 QR 라벨이 발급되었습니다", en: "Internal QR label issued" },
   printRequestedToast: { ko: "출력 요청을 보냈습니다", en: "Print request sent" },
-  generateAndPrintQrButton: { ko: "QR 생성 및 인쇄", en: "Generate & Print QR" },
   uploadFailFallback: { ko: "업로드 실패", en: "Upload failed" },
   confirmDeleteItem: {
     ko: '"{name}"을(를) 휴지통으로 이동할까요? 나중에 복구할 수 있습니다.',
@@ -272,13 +267,12 @@ const dict = {
     ko: "기존 바코드 또는 Matter 페어링 코드 입력",
     en: "Enter existing barcode or Matter pairing code",
   },
-  addExistingBarcode: { ko: "기존 바코드로 추가", en: "Add as existing barcode" },
-  addMatterBarcode: { ko: "Matter 코드로 추가", en: "Add as Matter code" },
-  showMatterOptionButton: { ko: "Matter 코드 옵션 보기", en: "Show Matter code option" },
+  addBarcodeButton: { ko: "추가", en: "Add" },
+  showAddBarcodeButton: { ko: "식별자 직접 추가", en: "Add identifier manually" },
   addSerialNumberButton: { ko: "시리얼번호로 추가", en: "Add as serial number" },
   matterCodeHint: {
-    ko: "스마트홈 기기의 Matter 페어링 코드를 이 아이템의 식별자로만 저장합니다 — 실제 기기 연동(커미셔닝)은 지원하지 않고, 나중에 이 코드로 다시 찾을 수 있게 하는 용도입니다.",
-    en: "Stores a smart-home device's Matter pairing code purely as an identifier for this item — it does not perform actual device commissioning, it just lets you look the device back up by this code later.",
+    ko: "카메라로 QR을 스캔하면 Matter 페어링 코드로 자동 인식됩니다 — 이 아이템의 식별자로만 저장될 뿐, 실제 기기 연동(커미셔닝)은 지원하지 않습니다.",
+    en: "Scanning a QR code with the camera is automatically recognized as a Matter pairing code — it's only stored as an identifier for this item, it doesn't perform actual device commissioning.",
   },
   movementHistoryTitle: { ko: "수량 변경 이력", en: "Quantity history" },
   viewAll: { ko: "전체 보기", en: "View all" },
