@@ -27,7 +27,6 @@ export default function NewItemPage() {
   const [recentCategoryIds] = useState(() => loadRecentIds(RECENT_CATEGORIES_KEY));
   const [name, setName] = useState("");
   const [itemType, setItemType] = useState<ItemType>("CONSUMABLE");
-  const [generateAndPrint, setGenerateAndPrint] = useState(false);
   const [condition, setCondition] = useState<ItemCondition>("NEW");
   const [quantity, setQuantity] = useState(1);
   const [locationId, setLocationId] = useState("");
@@ -124,6 +123,16 @@ export default function NewItemPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    await submitItem(false);
+  }
+
+  async function handleSubmitAndPrint() {
+    await submitItem(true);
+  }
+
+  // 바코드 없이 등록한 물건은 그 자체로는 다시 찾아볼 방법이 없으니, 항상 내부 QR을
+  // 자동으로 함께 발급한다 — 인쇄까지 할지(withPrint)만 버튼으로 선택하게 한다.
+  async function submitItem(withPrint: boolean) {
     if (!name.trim()) return;
     setSaving(true);
     try {
@@ -167,15 +176,20 @@ export default function NewItemPage() {
 
       show(t("itemCreatedToast"), "success");
 
-      if (generateAndPrint) {
+      if (!barcodeValue.trim()) {
         try {
-          if (!barcodeValue.trim()) {
-            await apiJson(`/api/items/${item.id}/barcodes/generate`, { method: "POST" });
-          }
+          await apiJson(`/api/items/${item.id}/barcodes/generate`, { method: "POST" });
+        } catch {
+          // QR 발급이 실패해도 등록 자체는 이미 끝났으니 막지 않는다 — 상세 페이지에서 다시 시도 가능.
+        }
+      }
+
+      if (withPrint) {
+        try {
           await apiJson(`/api/items/${item.id}/print-request`, { method: "POST" });
-          show(t("qrAndPrintSuccessToast"), "success");
+          show(t("printRequestedToast"), "success");
         } catch (err: any) {
-          show(t("qrAndPrintFailToast", { msg: err.message }), "error");
+          show(t("printRequestFailToast", { msg: err.message }), "error");
         }
       }
 
@@ -211,20 +225,14 @@ export default function NewItemPage() {
           <button
             type="button"
             className={`chip${itemType === "CONSUMABLE" ? " chip-selected" : ""}`}
-            onClick={() => {
-              setItemType("CONSUMABLE");
-              setGenerateAndPrint(false);
-            }}
+            onClick={() => setItemType("CONSUMABLE")}
           >
             {t("itemTypeConsumable")}
           </button>
           <button
             type="button"
             className={`chip${itemType === "ASSET" ? " chip-selected" : ""}`}
-            onClick={() => {
-              setItemType("ASSET");
-              setGenerateAndPrint(true);
-            }}
+            onClick={() => setItemType("ASSET")}
           >
             {t("itemTypeAsset")}
           </button>
@@ -366,17 +374,20 @@ export default function NewItemPage() {
           <span className="badge badge-muted">{currency}</span>
         </div>
         <textarea placeholder={t("notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-        <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row", marginTop: 8, marginBottom: 8 }}>
-          <input
-            type="checkbox"
-            checked={generateAndPrint}
-            onChange={(e) => setGenerateAndPrint(e.target.checked)}
-          />
-          {t("generateAndPrintQrCheckbox")}
-        </label>
-        <button type="submit" disabled={saving || !name.trim()}>
-          {saving ? t("saving") : t("save")}
-        </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button type="submit" disabled={saving || !name.trim()} style={{ flex: 1 }}>
+            {saving ? t("registering") : t("registerButton")}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={saving || !name.trim()}
+            onClick={handleSubmitAndPrint}
+            style={{ flex: 1 }}
+          >
+            {saving ? t("registering") : t("registerAndPrintButton")}
+          </button>
+        </div>
       </form>
     </main>
   );
