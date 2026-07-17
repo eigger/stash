@@ -69,6 +69,29 @@ describe("buildWebhookPayload", () => {
     expect(payload.labelImageUrl).toBe("https://stash.example.com/api/barcodes/b3/label.png");
   });
 
+  it("targets the given barcodeId instead of the primary one when provided", () => {
+    const payload = buildWebhookPayload(
+      "item.print_requested",
+      {
+        id: "item4",
+        name: "건전지",
+        quantity: 4,
+        unit: "개",
+        locationId: null,
+        barcodes: [
+          { id: "b4", value: "333", symbology: "OTHER", isPrimary: true },
+          { id: "b5", value: "http://localhost/i/item4", symbology: "QR", isPrimary: false },
+        ],
+      },
+      baseUrl,
+      "b5",
+    );
+
+    expect(payload.barcodeValue).toBe("http://localhost/i/item4");
+    expect(payload.symbology).toBe("QR");
+    expect(payload.labelImageUrl).toBe("https://stash.example.com/api/barcodes/b5/label.png");
+  });
+
   it("sends null barcode fields when the item has no barcode at all", () => {
     const payload = buildWebhookPayload(
       "item.updated",

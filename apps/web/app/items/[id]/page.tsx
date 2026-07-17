@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import { BarcodeFormat } from "@zxing/library";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
-import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
+import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import type { TranslationKey } from "../../../lib/i18n/translations";
 import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason } from "../../../lib/types";
@@ -57,7 +58,8 @@ export default function ItemDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [busy, setBusy] = useState(true);
   const [manualBarcode, setManualBarcode] = useState("");
-  const [showMatterOption, setShowMatterOption] = useState(false);
+  const [scannedFormat, setScannedFormat] = useState<BarcodeFormat | null>(null);
+  const [showAddBarcode, setShowAddBarcode] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -85,6 +87,7 @@ export default function ItemDetailPage() {
         if (cancelled || !result) return;
         playBeep();
         setManualBarcode(result.getText());
+        setScannedFormat(result.getBarcodeFormat());
         setScanning(false);
       })
       .then((controls) => {
@@ -169,51 +172,41 @@ export default function ItemDetailPage() {
     }
   }
 
-  async function generateAndPrintQr() {
+  async function requestPrintForBarcode(barcodeId: string) {
     if (!item) return;
     try {
-      await apiJson(`/api/items/${item.id}/barcodes/generate`, { method: "POST" });
-      await apiJson(`/api/items/${item.id}/print-request`, { method: "POST" });
-      show(t("qrAndPrintSuccessToast"), "success");
-      await refresh();
-    } catch (err: any) {
-      show(err.message, "error");
-      await refresh().catch(() => null);
-    }
-  }
-
-  async function requestPrint() {
-    if (!item) return;
-    try {
-      await apiJson(`/api/items/${item.id}/print-request`, { method: "POST" });
+      await apiJson(`/api/items/${item.id}/print-request`, {
+        method: "POST",
+        body: JSON.stringify({ barcodeId }),
+      });
       show(t("printRequestedToast"), "success");
     } catch (err: any) {
       show(err.message, "error");
     }
   }
 
-  async function addManualBarcode() {
+  // 카메라로 스캔한 값은 포맷을 이미 알고 있다 — 1D 바코드(EAN/UPC/CODE128)면 기존 바코드,
+  // QR이면 Matter 코드로 자동 태깅해서 "기존 바코드로 추가"/"Matter 코드로 추가" 버튼을
+  // 따로 둘 필요가 없게 한다. 심볼로지도 스캔 포맷을 그대로 매핑해서 정확히 저장한다 —
+  // 서버의 guessSymbology(자릿수 추측)에만 기대면 라벨 렌더링이 실제와 달라질 수 있다.
+  // 스캔 없이 손으로 입력한 값은 포맷을 알 수 없는데, Matter 코드를 손으로 타이핑하는
+  // 경우는 사실상 없으므로 기존 바코드로 취급한다(심볼로지는 서버가 값 모양으로 추측).
+  // Matter는 스마트홈 "기기" 페어링 코드이므로 자산(ASSET) 아이템에서 스캔했을 때만
+  // 적용한다 — 소모품에서 QR을 스캔한 경우는 그냥 기존 바코드로 저장한다.
+  async function addBarcode() {
     if (!item || !manualBarcode.trim()) return;
+    const isMatter = scannedFormat === BarcodeFormat.QR_CODE && item.itemType === "ASSET";
     try {
       await apiJson(`/api/items/${item.id}/barcodes`, {
         method: "POST",
-        body: JSON.stringify({ value: manualBarcode.trim(), source: "EXISTING", symbology: "OTHER" }),
+        body: JSON.stringify({
+          value: manualBarcode.trim(),
+          source: isMatter ? "MATTER" : "EXISTING",
+          ...(scannedFormat ? { symbology: symbologyFromScanFormat(scannedFormat) } : {}),
+        }),
       });
       setManualBarcode("");
-      await refresh();
-    } catch (err: any) {
-      show(err.message, "error");
-    }
-  }
-
-  async function addMatterBarcode() {
-    if (!item || !manualBarcode.trim()) return;
-    try {
-      await apiJson(`/api/items/${item.id}/barcodes`, {
-        method: "POST",
-        body: JSON.stringify({ value: manualBarcode.trim(), source: "MATTER", symbology: "QR" }),
-      });
-      setManualBarcode("");
+      setScannedFormat(null);
       await refresh();
     } catch (err: any) {
       show(err.message, "error");
@@ -564,6 +557,9 @@ export default function ItemDetailPage() {
               <a className="btn-action" href={`${API_URL}/api/barcodes/${b.id}/label.png`} target="_blank" rel="noreferrer">
                 {t("viewLabel")}
               </a>
+              <button type="button" className="btn-action" onClick={() => requestPrintForBarcode(b.id)}>
+                {t("printRequestButton")}
+              </button>
               <button type="button" className="btn-action btn-action-danger" onClick={() => removeBarcode(b.id)}>
                 {t("delete")}
               </button>
@@ -571,84 +567,77 @@ export default function ItemDetailPage() {
           </div>
         ))}
 
-        <div className="fab-row">
-          {!item.barcodes.some((b) => b.source === "GENERATED") && (
-            <>
-              <button onClick={generateQr}>{t("generateQrButton")}</button>
-              <button className="secondary" onClick={generateAndPrintQr}>{t("generateAndPrintQrButton")}</button>
-            </>
-          )}
-          {item.barcodes.length > 0 && (
-            <button className="secondary" onClick={requestPrint}>
-              {t("printRequestButton")}
-            </button>
-          )}
-        </div>
-        <div className="form" style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              placeholder={t("manualBarcodePlaceholder")}
-              value={manualBarcode}
-              onChange={(e) => setManualBarcode(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                unlockBeepAudio();
-                setScanning((s) => !s);
-              }}
-            >
-              {scanning ? t("cancelScanButton") : t("scanBarcodeButton")}
-            </button>
+        {!item.barcodes.some((b) => b.source === "GENERATED") && (
+          <div className="fab-row">
+            <button onClick={generateQr}>{t("generateQrButton")}</button>
           </div>
+        )}
 
-          {scanning && (
-            <div className="scanner-frame" style={{ maxWidth: 280 }}>
-              <video ref={videoRef} muted playsInline />
-              <div className="scanner-overlay">
-                <div className="scan-box">
-                  <span className="corner tl" />
-                  <span className="corner tr" />
-                  <span className="corner bl" />
-                  <span className="corner br" />
-                  <span className="scan-line" />
-                </div>
-              </div>
-              {torchSupported && (
-                <TorchButton active={torchOn} onClick={toggleTorch} label={t(torchOn ? "torchOnLabel" : "torchOffLabel")} />
-              )}
-            </div>
-          )}
-          {scanError && <p className="error-text">{scanError}</p>}
-
-          <button className="secondary" onClick={addManualBarcode} style={{ width: "100%" }}>
-            {t("addExistingBarcode")}
-          </button>
-          {item.itemType === "ASSET" && (
-            <button className="secondary" onClick={addSerialNumber} style={{ marginTop: 8 }}>
-              {t("addSerialNumberButton")}
-            </button>
-          )}
-          {showMatterOption ? (
-            <>
-              <button className="secondary" onClick={addMatterBarcode} style={{ marginTop: 8, width: "100%" }}>
-                {t("addMatterBarcode")}
+        {showAddBarcode ? (
+          <div className="form" style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                placeholder={t("manualBarcodePlaceholder")}
+                value={manualBarcode}
+                onChange={(e) => {
+                  setManualBarcode(e.target.value);
+                  setScannedFormat(null);
+                }}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  unlockBeepAudio();
+                  setScanning((s) => !s);
+                }}
+              >
+                {scanning ? t("cancelScanButton") : t("scanBarcodeButton")}
               </button>
-              <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="btn-action"
-              style={{ marginTop: 8 }}
-              onClick={() => setShowMatterOption(true)}
-            >
-              {t("showMatterOptionButton")}
+            </div>
+
+            {scanning && (
+              <div className="scanner-frame" style={{ maxWidth: 280 }}>
+                <video ref={videoRef} muted playsInline />
+                <div className="scanner-overlay">
+                  <div className="scan-box">
+                    <span className="corner tl" />
+                    <span className="corner tr" />
+                    <span className="corner bl" />
+                    <span className="corner br" />
+                    <span className="scan-line" />
+                  </div>
+                </div>
+                {torchSupported && (
+                  <TorchButton active={torchOn} onClick={toggleTorch} label={t(torchOn ? "torchOnLabel" : "torchOffLabel")} />
+                )}
+              </div>
+            )}
+            {scanError && <p className="error-text">{scanError}</p>}
+
+            <button className="secondary" onClick={addBarcode} style={{ width: "100%" }}>
+              {t("addBarcodeButton")}
             </button>
-          )}
-        </div>
+            {item.itemType === "ASSET" && (
+              <>
+                <button className="secondary" onClick={addSerialNumber} style={{ marginTop: 8, width: "100%" }}>
+                  {t("addSerialNumberButton")}
+                </button>
+                <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
+              </>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-action"
+            style={{ marginTop: 12 }}
+            onClick={() => setShowAddBarcode(true)}
+          >
+            {t("showAddBarcodeButton")}
+          </button>
+        )}
       </div>
 
       {item.itemType === "ASSET" && (

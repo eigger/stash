@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
+  barcodeSymbologySchema,
+  guessSymbology,
   itemBulkDeleteSchema,
   itemBulkUpdateSchema,
   itemInputSchema,
@@ -10,7 +12,6 @@ import {
 import { prisma } from "../lib/prisma.js";
 import { resolveProduct } from "../lib/barcodeLookup/index.js";
 import { fireInventoryWebhook, isInventoryWebhookConfigured } from "../lib/webhook.js";
-import { guessSymbology } from "../lib/barcodeSymbology.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
 import { deleteUploadedFile } from "../lib/uploads.js";
 import { encodeCsvRow, parseCsv } from "../lib/csv.js";
@@ -313,8 +314,16 @@ export async function itemRoutes(app: FastifyInstance) {
     // 새 아이템에 바로 붙일 기존 바코드 값이 있으면(수동 등록 폼에서) 함께 저장한다.
     // 아이템 생성 전에 먼저 충돌을 확인해서, 바코드가 이미 다른 아이템에 있을 때
     // 아이템만 생성되고 바코드는 못 붙는 반쪽짜리 상태가 되지 않게 한다.
-    const rawBarcode = (request.body as Record<string, unknown>)?.barcodeValue;
+    const body = request.body as Record<string, unknown>;
+    const rawBarcode = body?.barcodeValue;
     const barcodeValue = typeof rawBarcode === "string" ? rawBarcode.trim() : "";
+    // 등록 폼에서 카메라로 스캔한 값은 실제 포맷(바코드 vs QR)을 알고 있으니 그대로
+    // 전달받는다 — 자산을 등록하며 Matter QR을 스캔한 경우만 MATTER로, 그 외엔 항상
+    // EXISTING이다. 심볼로지도 스캔 포맷이 오면 그대로 쓰고, 없으면(손 입력) 값 모양으로
+    // 추측한다(guessSymbology) — 상세페이지의 수동 추가와 동일한 원칙.
+    const barcodeSource = body?.barcodeSource === "MATTER" ? "MATTER" : "EXISTING";
+    const parsedSymbology = barcodeSymbologySchema.safeParse(body?.barcodeSymbology);
+    const barcodeSymbology = parsedSymbology.success ? parsedSymbology.data : guessSymbology(barcodeValue);
     if (barcodeValue) {
       const existing = await prisma.barcode.findUnique({ where: { value: barcodeValue } });
       if (existing) {
@@ -339,8 +348,8 @@ export async function itemRoutes(app: FastifyInstance) {
         data: {
           itemId: item.id,
           value: barcodeValue,
-          symbology: guessSymbology(barcodeValue),
-          source: "EXISTING",
+          symbology: barcodeSymbology,
+          source: barcodeSource,
           isPrimary: true,
         },
       });
@@ -471,8 +480,13 @@ export async function itemRoutes(app: FastifyInstance) {
 
   // 관리자가 재고 이벤트 웹훅을 설정해뒀을 때, 명시적으로 "프린터로 출력" 요청을 보내는
   // 액션. 실제 출력 로직은 전부 웹훅을 받는 쪽 자동화가 담당한다 (docs/ROADMAP.md 참고).
+  // barcodeId를 지정하면 그 바코드를 찍는다 — 바코드가 여러 개인 아이템에서 "primary"
+  // 개념에 기대면 어느 게 찍힐지 예측이 안 됐던 문제라, 상세페이지의 바코드별 인쇄
+  // 버튼은 항상 barcodeId를 함께 보낸다. 생략하면(등록 화면 등, 바코드가 하나뿐인 경우)
+  // 기존처럼 primary 또는 첫 번째 바코드로 폴백한다.
   app.post("/:id/print-request", async (request, reply) => {
     const { id } = request.params as { id: string };
+    const { barcodeId } = (request.body as { barcodeId?: string } | undefined) ?? {};
     if (!(await isInventoryWebhookConfigured())) {
       return reply.code(400).send({ error: t("webhookNotConfigured", request.locale) });
     }
@@ -481,7 +495,10 @@ export async function itemRoutes(app: FastifyInstance) {
     if (item.barcodes.length === 0) {
       return reply.code(400).send({ error: t("itemHasNoBarcode", request.locale) });
     }
-    await fireInventoryWebhook("item.print_requested", item);
+    if (barcodeId && !item.barcodes.some((b) => b.id === barcodeId)) {
+      return reply.code(404).send({ error: t("barcodeNotFound", request.locale) });
+    }
+    await fireInventoryWebhook("item.print_requested", item, barcodeId);
     return { ok: true };
   });
 

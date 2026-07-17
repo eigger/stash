@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { barcodeInputSchema } from "@stash/shared";
+import { barcodeInputSchema, guessSymbology } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
 import { buildItemDeepLink, renderLabelPng } from "../lib/qrLabel.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
@@ -35,8 +35,17 @@ export async function barcodeRoutes(app: FastifyInstance) {
     const item = await prisma.item.findUnique({ where: { id: itemId } });
     if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
 
+    // 클라이언트가 심볼로지를 아예 안 보냈으면(스캔 포맷을 모르는 손 입력) 값 모양으로
+    // 추측한다 — zod 기본값("OTHER")에만 기대면 실제 EAN/UPC 값도 전부 OTHER로 저장돼
+    // 라벨이 항상 code128로만 렌더링된다. 스캔으로 실제 포맷을 보낸 경우는 그대로 둔다.
+    const rawSymbology = (request.body as Record<string, unknown> | undefined)?.symbology;
+    const data = {
+      ...parsed.data,
+      symbology: rawSymbology === undefined ? guessSymbology(parsed.data.value) : parsed.data.symbology,
+    };
+
     try {
-      const barcode = await prisma.barcode.create({ data: { itemId, ...parsed.data } });
+      const barcode = await prisma.barcode.create({ data: { itemId, ...data } });
       return reply.code(201).send(barcode);
     } catch (err) {
       if (isUniqueConstraintError(err)) {
