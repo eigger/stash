@@ -126,7 +126,7 @@ export default function LabelsPage() {
               {item.name}
             </label>
             <a href={`${API_URL}/api/barcodes/${primary.id}/label.png`} download={`${item.name}.png`}>
-              <button className="secondary">{t("downloadIndividual")}</button>
+              <button type="button" className="btn-action">{t("downloadIndividual")}</button>
             </a>
           </div>
         );

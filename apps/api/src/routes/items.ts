@@ -408,7 +408,10 @@ export async function itemRoutes(app: FastifyInstance) {
     const item = await prisma.item.update({
       where: { id },
       data,
-      include: ITEM_INCLUDE,
+      // attachments도 함께 내려줘야 한다 — 그냥 ITEM_INCLUDE만 쓰면 이름/위치 등 아무
+      // 필드나 하나 수정할 때마다 응답에 attachments가 빠져서 화면에서 첨부파일 목록이
+      // 사라져 보이는 문제가 있었다(대표 사진 지정도 이 PATCH를 타므로 같은 증상 발생).
+      include: { ...ITEM_INCLUDE, attachments: true },
     });
     void fireInventoryWebhook("item.updated", item);
     return item;

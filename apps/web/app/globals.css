@@ -128,6 +128,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -246,6 +247,18 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* 대표 사진은 아이템의 "메인 콘텐츠"가 아니라 이름 옆에 붙는 프로필 사진 같은 식별용
+   아이콘이다 — 전체 사진을 다 보여주려 하지 않고, 목록의 .thumb과 같은 방식(고정 크기 +
+   object-fit: cover)으로 헤더 안에 작게 자리잡게 한다. */
+.item-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-surface-hover);
 }
 
 .item-card .thumb {
@@ -791,8 +804,120 @@ button:disabled {
 
 .tree-row-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+/* 첨부파일/바코드 같은 목록 행의 보조 액션 — 기본 button보다 훨씬 작게, garage 프로젝트의
+   .btn-action 컨벤션을 그대로 따른다. */
+.btn-action {
+  min-height: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  padding: 0 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.btn-action:hover {
+  background: var(--color-surface-hover);
+}
+
+.btn-action-danger {
+  color: var(--color-danger);
+}
+
+.btn-action-danger:hover {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+/* 첨부파일을 텍스트 링크가 아니라 실제 썸네일로 미리보여준다 — garage 프로젝트의
+   AttachmentList 타일 컨벤션(정사각 썸네일 + 모서리에 겹친 삭제 배지)을 그대로 따른다. */
+.attachment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.attachment-tile {
+  position: relative;
+  width: 84px;
+}
+
+.attachment-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-file-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.attachment-primary-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  pointer-events: none;
+}
+
+.attachment-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  background: var(--color-danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.attachment-set-primary {
+  width: 100%;
+  margin-top: 6px;
 }
 
 .fab-row {

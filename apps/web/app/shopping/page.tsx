@@ -9,10 +9,10 @@ import { useLocale } from "../../lib/i18n/locale-context";
 import { ItemCard } from "../../components/ItemCard";
 import type { Item } from "../../lib/types";
 
-// 재고부족 항목을 장 보러 갈 때 훑어볼 체크리스트로 보여준다. 수량을 올려서
-// minQuantity를 넘기면(=샀다는 뜻) 목록에서 자동으로 빠진다 — 별도의 "구매완료"
-// 플래그 없이 기존 수량 데이터만으로 동작한다. 재고와 무관하게 수동으로 추가한(wanted)
-// 항목은 수량 데이터가 없을 수 있어, 대신 "구매완료" 체크박스로 직접 빼낸다.
+// 재고부족 항목을 장 보러 갈 때 훑어볼 체크리스트로 보여준다. 모든 항목에 동일한 "구매완료"
+// 버튼을 붙여서, 왜 있는 항목은 되고 없는 항목은 안 되는지 헷갈리지 않게 한다 — wanted로
+// 수동 추가된 항목은 그 자리에서 wanted를 해제하고, 재고부족으로 뜬 항목은 기준 수량을
+// 막 넘긴 값으로 채워서(=방금 다 샀다는 뜻) 목록에서 빠지게 한다.
 export default function ShoppingPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -32,13 +32,14 @@ export default function ShoppingPage() {
       .finally(() => setBusy(false));
   }, [user]);
 
-  async function markWantedBought(id: string) {
+  async function markBought(item: Item) {
     try {
-      await apiJson(`/api/items/${id}`, { method: "PATCH", body: JSON.stringify({ wanted: false }) });
+      const patch = item.wanted ? { wanted: false } : { quantity: (item.minQuantity ?? 0) + 1 };
+      const updated = await apiJson<Item>(`/api/items/${item.id}`, { method: "PATCH", body: JSON.stringify(patch) });
       setItems((prev) =>
         prev
-          .map((i) => (i.id === id ? { ...i, wanted: false } : i))
-          .filter((i) => i.wanted || (i.minQuantity != null && i.quantity <= i.minQuantity)),
+          .map((i) => (i.id === updated.id ? updated : i))
+          .filter((i) => i.wanted || i.minQuantity == null || i.quantity <= i.minQuantity),
       );
     } catch (err: any) {
       show(err.message, "error");
@@ -66,22 +67,13 @@ export default function ShoppingPage() {
             )
           }
           extra={
-            (item.notes || item.wanted) && (
-              <div style={{ marginTop: 4 }}>
-                {item.notes && (
-                  <p className="meta" style={{ margin: "2px 0", fontStyle: "italic" }}>
-                    {item.notes}
-                  </p>
-                )}
-                {item.wanted && (
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.85rem" }}>
-                    <input type="checkbox" onChange={() => markWantedBought(item.id)} />
-                    {t("boughtCheckboxLabel")}
-                  </label>
-                )}
-              </div>
+            item.notes && (
+              <p className="meta" style={{ margin: "2px 0", fontStyle: "italic" }}>
+                {item.notes}
+              </p>
             )
           }
+          onMarkBought={() => markBought(item)}
         />
       ))}
     </main>
