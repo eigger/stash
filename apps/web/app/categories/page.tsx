@@ -85,7 +85,7 @@ export default function CategoriesPage() {
             {c.parentId && <span className="meta"> · {t("subOf", { name: parentName(c.parentId) ?? "" })}</span>}
             <span className="meta"> · {t("itemCount", { n: c._count?.items ?? 0 })}</span>
           </div>
-          <button className="secondary" onClick={() => handleDelete(c.id)}>
+          <button type="button" className="btn-action btn-action-danger" onClick={() => handleDelete(c.id)}>
             {t("delete")}
           </button>
         </div>

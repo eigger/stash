@@ -67,6 +67,11 @@ const dict = {
   },
   lowStockSection: { ko: "재고부족", en: "Low stock" },
   expiringSection: { ko: "유통기한 임박", en: "Expiring soon" },
+  needsNamingSection: { ko: "이름 정리 필요", en: "Needs a proper name" },
+  needsNamingHint: {
+    ko: "조회에 실패한 바코드로 등록되어 이름이 임시로 채워졌습니다. 눌러서 실제 제품명으로 바꿔주세요.",
+    en: "Registered from a barcode lookup that came up empty, so the name is a placeholder. Tap to give it a real name.",
+  },
   recentSection: { ko: "최근 등록", en: "Recently added" },
 
   // shopping list
@@ -77,7 +82,6 @@ const dict = {
     en: "Items running low. Tap + for each one you buy — it drops off once it's back above the threshold.",
   },
   shoppingListEmpty: { ko: "장 볼 항목이 없습니다.", en: "Nothing to buy right now." },
-  boughtCheckboxLabel: { ko: "구매완료", en: "Bought" },
 
   // scan
   scanTitle: { ko: "스캔", en: "Scan" },
@@ -226,7 +230,6 @@ const dict = {
   qrIssuedToast: { ko: "내부 QR 라벨이 발급되었습니다", en: "Internal QR label issued" },
   printRequestedToast: { ko: "출력 요청을 보냈습니다", en: "Print request sent" },
   generateAndPrintQrButton: { ko: "QR 생성 및 인쇄", en: "Generate & Print QR" },
-  photoUploadedToast: { ko: "사진이 등록되었습니다", en: "Photo added" },
   uploadFailFallback: { ko: "업로드 실패", en: "Upload failed" },
   confirmDeleteItem: {
     ko: '"{name}"을(를) 휴지통으로 이동할까요? 나중에 복구할 수 있습니다.',
@@ -243,10 +246,9 @@ const dict = {
   categoryLabel: { ko: "카테고리", en: "Category" },
   noCategoryOption: { ko: "카테고리 없음", en: "No category" },
   minQuantityLabel: { ko: "재고부족 기준 수량", en: "Low-stock threshold" },
-  addToShoppingListLabel: {
-    ko: "장보기 목록에 추가 (재고와 무관하게)",
-    en: "Add to shopping list (regardless of stock level)",
-  },
+  addToShoppingListButton: { ko: "장보기 목록에 추가", en: "Add to shopping list" },
+  removeFromShoppingListButton: { ko: "장보기 목록에서 제거", en: "Remove from shopping list" },
+  markBoughtButton: { ko: "구매완료", en: "Bought" },
   expiryLabel: { ko: "유통기한", en: "Expiry date" },
   warrantyLabel: { ko: "보증 만료일", en: "Warranty expiry" },
   photoUploadLabel: { ko: "사진 촬영/업로드", en: "Take or upload photo" },
@@ -297,6 +299,9 @@ const dict = {
     en: "Add a file (receipt, manual, warranty, etc.)",
   },
   attachmentUploadedToast: { ko: "파일이 추가되었습니다", en: "File added" },
+  primaryPhotoBadge: { ko: "대표 사진", en: "Primary" },
+  setPrimaryPhotoButton: { ko: "대표 사진으로 지정", en: "Set as primary" },
+  unsetPrimaryPhotoButton: { ko: "대표 해제", en: "Unset primary" },
 
   // locations
   locationsTitle: { ko: "위치", en: "Locations" },

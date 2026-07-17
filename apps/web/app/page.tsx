@@ -19,12 +19,18 @@ interface OnboardingPushStatus {
   subscribed: boolean;
 }
 
+// 외부 조회가 실패한 채로 스캔 등록된 아이템의 이름 패턴 — apps/api/src/routes/items.ts의
+// /scan 라우트가 만드는 문자열과 반드시 동일해야 한다. 스캔 미니시트에서 바로 못 고치고
+// 넘어간 아이템을 여기서 안전망으로 다시 보여준다.
+const UNNAMED_ITEM_PREFIX = "미확인 상품 (";
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading, isAdmin } = useAuth();
   const { t } = useLocale();
   const [lowStock, setLowStock] = useState<Item[]>([]);
   const [expiringSoon, setExpiringSoon] = useState<Item[]>([]);
+  const [needsNaming, setNeedsNaming] = useState<Item[]>([]);
   const [recent, setRecent] = useState<Item[]>([]);
   const [stats, setStats] = useState<ItemStats | null>(null);
   const [busy, setBusy] = useState(true);
@@ -48,15 +54,17 @@ export default function DashboardPage() {
     Promise.all([
       apiJson<Item[]>("/api/items?lowStock=true"),
       apiJson<Item[]>("/api/items?expiringSoon=true"),
+      apiJson<Item[]>(`/api/items?q=${encodeURIComponent(UNNAMED_ITEM_PREFIX)}&limit=8`),
       apiJson<Item[]>("/api/items?limit=8"),
       apiJson<ItemStats>("/api/items/stats"),
       apiJson<Location[]>("/api/locations").catch(() => []),
       getPushStatus().catch(() => ({ configured: false, subscribed: false, subscriptionCount: 0 })),
       settingsPromise,
     ])
-      .then(([low, expiring, recentItems, itemStats, locs, push, settingsRows]) => {
+      .then(([low, expiring, unnamed, recentItems, itemStats, locs, push, settingsRows]) => {
         setLowStock(low);
         setExpiringSoon(expiring);
+        setNeedsNaming(unnamed);
         setRecent(recentItems);
         setStats(itemStats);
         setOnboardLocations(locs);
@@ -136,7 +144,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!busy && !loadFailed && recent.length > 0 && lowStock.length === 0 && expiringSoon.length === 0 && (
+      {!busy && !loadFailed && recent.length > 0 && lowStock.length === 0 && expiringSoon.length === 0 && needsNaming.length === 0 && (
         <p className="scan-hint">{t("noUrgentItems")}</p>
       )}
 
@@ -166,6 +174,16 @@ export default function DashboardPage() {
         <section className="dashboard-section">
           <h2>{t("expiringSection")} ({expiringSoon.length})</h2>
           {expiringSoon.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </section>
+      )}
+
+      {needsNaming.length > 0 && (
+        <section className="dashboard-section">
+          <h2>{t("needsNamingSection")} ({needsNaming.length})</h2>
+          <p className="meta" style={{ marginTop: 0 }}>{t("needsNamingHint")}</p>
+          {needsNaming.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
         </section>

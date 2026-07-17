@@ -19,6 +19,33 @@ const REASON_KEY: Record<StockMovementReason, TranslationKey> = {
   ADJUST: "reasonAdjust",
 };
 
+// 이모지는 폰트/OS별로 모양이 달라져서 아이콘으로 쓰지 않는다 — 스트로크 SVG로 통일한다.
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+      <rect x="9" y="9" width="12" height="12" rx="1.5" />
+      <path d="M5 15V4.5A1.5 1.5 0 0 1 6.5 3H15" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" width={13} height={13}>
+      <path d="M5 5 19 19M19 5 5 19" />
+    </svg>
+  );
+}
+
+function FileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" width={22} height={22}>
+      <path d="M6 2.5h8l4 4V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1Z" />
+      <path d="M14 2.5V7h4" />
+    </svg>
+  );
+}
+
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -30,7 +57,6 @@ export default function ItemDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [busy, setBusy] = useState(true);
   const [manualBarcode, setManualBarcode] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -94,6 +120,7 @@ export default function ItemDetailPage() {
   async function refresh() {
     const data = await apiJson<Item>(`/api/items/${id}`);
     setItem(data);
+    return data;
   }
 
   useEffect(() => {
@@ -252,30 +279,35 @@ export default function ItemDetailPage() {
     }
   }
 
-  async function handlePhotoUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !item) return;
-    setUploading(true);
+  async function setPhotoUrl(itemId: string, url: string | null) {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await apiFetch(`/api/attachments?itemId=${item.id}`, { method: "POST", body: formData });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(typeof body?.error === "string" ? body.error : t("uploadFailFallback"));
-      }
-      const attachment = await res.json();
-      await updateField("photoUrl", `${API_URL}/api/attachments/file/${attachment.filePath}`);
-      show(t("photoUploadedToast"), "success");
+      const updated = await apiJson<Item>(`/api/items/${itemId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ photoUrl: url }),
+      });
+      setItem(updated);
     } catch (err: any) {
       show(err.message, "error");
-    } finally {
-      setUploading(false);
     }
   }
 
-  // 사진(photoUrl)과 달리 이 목록은 item.photoUrl을 건드리지 않는다 — 영수증·설명서·
-  // 보증서 등 대표 사진이 아닌 부가 파일을 여러 개 쌓아두는 용도.
+  // 이미지 첨부가 1장이면 그게 곧 대표 사진 — 자동으로 photoUrl을 맞춰준다. 2장 이상이면
+  // 어느 게 대표인지 알 수 없으니 사용자가 직접 골라야 하고, 대표였던 게 삭제돼서 후보가
+  // 여럿(또는 0장) 남으면 대표 지정을 해제한다.
+  async function syncRepresentativePhoto() {
+    const data = await refresh();
+    const images = data.attachments?.filter((a) => a.mimeType.startsWith("image/")) ?? [];
+    if (images.length === 1) {
+      const url = `${API_URL}/api/attachments/file/${images[0].filePath}`;
+      if (data.photoUrl !== url) await setPhotoUrl(data.id, url);
+    } else if (data.photoUrl && !images.some((a) => `${API_URL}/api/attachments/file/${a.filePath}` === data.photoUrl)) {
+      await setPhotoUrl(data.id, null);
+    }
+  }
+
+  // 사진과 첨부파일을 별도 업로드 경로로 뒀더니 사진을 새로 올릴 때마다 이전 파일이
+  // 정리되지 않고 쌓이는 문제가 있었다 — 업로드 경로를 첨부파일 하나로 합치고, 대표 사진은
+  // 이미지 첨부 중에서 고르는 방식으로 바꿔서 파일이 항상 첨부파일 삭제 하나로만 정리되게 한다.
   async function handleAttachmentUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -289,7 +321,7 @@ export default function ItemDetailPage() {
         const body = await res.json().catch(() => null);
         throw new Error(typeof body?.error === "string" ? body.error : t("uploadFailFallback"));
       }
-      await refresh();
+      await syncRepresentativePhoto();
       show(t("attachmentUploadedToast"), "success");
     } catch (err: any) {
       show(err.message, "error");
@@ -301,7 +333,7 @@ export default function ItemDetailPage() {
   async function removeAttachment(attachmentId: string) {
     try {
       await apiJson(`/api/attachments/${attachmentId}`, { method: "DELETE" });
-      await refresh();
+      await syncRepresentativePhoto();
     } catch (err: any) {
       show(err.message, "error");
     }
@@ -339,6 +371,10 @@ export default function ItemDetailPage() {
   return (
     <main className="container">
       <div className="page-header">
+        {item.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.photoUrl} alt={item.name} className="item-avatar" />
+        )}
         <input
           className="item-name-input"
           value={item.name}
@@ -359,34 +395,6 @@ export default function ItemDetailPage() {
         <p className="meta" style={{ marginTop: -8, marginBottom: 12 }}>
           {t("lastAuditedLabel")}: {formatDateTime(item.lastAuditedAt)}
         </p>
-      )}
-
-      {item.attachments && item.attachments.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          {item.attachments.map((a, idx) => (
-            <a
-              key={a.id}
-              href={`${API_URL}/api/attachments/file/${a.filePath}`}
-              target="_blank"
-              rel="noreferrer"
-              className="badge badge-muted"
-              style={{
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 10px",
-              }}
-            >
-              📎 {a.mimeType === "application/pdf" ? `${t("attachmentTypePdf")} #${idx + 1}` : `${t("attachmentTypeImage")} #${idx + 1}`}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {item.photoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.photoUrl} alt={item.name} style={{ width: "100%", borderRadius: 12, marginBottom: 12 }} />
       )}
 
       <div className="card">
@@ -471,15 +479,6 @@ export default function ItemDetailPage() {
               />
             </label>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row" }}>
-              <input
-                type="checkbox"
-                checked={item.wanted}
-                onChange={(e) => updateField("wanted", e.target.checked)}
-              />
-              {t("addToShoppingListLabel")}
-            </label>
-
             <label>
               {t("expiryLabel")}
               <input
@@ -501,11 +500,6 @@ export default function ItemDetailPage() {
             />
           </label>
         )}
-
-        <label>
-          {t("photoUploadLabel")}
-          <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} />
-        </label>
 
         <div style={{ display: "flex", gap: 8 }}>
           <label style={{ flex: 1 }}>
@@ -562,14 +556,14 @@ export default function ItemDetailPage() {
                 onClick={() => copyToClipboard(b.value)}
                 title={t("copyToClipboardButton")}
               >
-                📋
+                <CopyIcon />
               </button>
             </div>
             <div className="tree-row-actions">
-              <a href={`${API_URL}/api/barcodes/${b.id}/label.png`} target="_blank" rel="noreferrer">
+              <a className="btn-action" href={`${API_URL}/api/barcodes/${b.id}/label.png`} target="_blank" rel="noreferrer">
                 {t("viewLabel")}
               </a>
-              <button className="secondary" onClick={() => removeBarcode(b.id)}>
+              <button type="button" className="btn-action btn-action-danger" onClick={() => removeBarcode(b.id)}>
                 {t("delete")}
               </button>
             </div>
@@ -706,24 +700,52 @@ export default function ItemDetailPage() {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>{t("attachmentsSectionTitle")}</h2>
         {(!item.attachments || item.attachments.length === 0) && <p className="meta">{t("noAttachments")}</p>}
-        {item.attachments?.map((a) => (
-          <div key={a.id} className="tree-row">
-            <div className="tree-row-value">
-              <span className="badge badge-muted">
-                {a.mimeType === "application/pdf" ? t("attachmentTypePdf") : t("attachmentTypeImage")}
-              </span>{" "}
-              {formatDateTime(a.uploadedAt)}
-            </div>
-            <div className="tree-row-actions">
-              <a href={`${API_URL}/api/attachments/file/${a.filePath}`} target="_blank" rel="noreferrer">
-                {t("openAttachmentLabel")}
-              </a>
-              <button className="secondary" onClick={() => removeAttachment(a.id)}>
-                {t("delete")}
-              </button>
-            </div>
+        {item.attachments && item.attachments.length > 0 && (
+          <div className="attachment-grid">
+            {(() => {
+              const imageCount = item.attachments!.filter((a) => a.mimeType.startsWith("image/")).length;
+              return item.attachments!.map((a) => {
+                const isImage = a.mimeType.startsWith("image/");
+                const fileUrl = `${API_URL}/api/attachments/file/${a.filePath}`;
+                const isPrimary = isImage && item.photoUrl === fileUrl;
+                return (
+                  <div key={a.id} className="attachment-tile">
+                    <a className="attachment-thumb" href={fileUrl} target="_blank" rel="noreferrer" title={formatDateTime(a.uploadedAt)}>
+                      {isImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={fileUrl} alt={t("attachmentTypeImage")} />
+                      ) : (
+                        <span className="attachment-file-badge">
+                          <FileIcon />
+                          {t("attachmentTypePdf")}
+                        </span>
+                      )}
+                    </a>
+                    {isPrimary && <span className="attachment-primary-badge">{t("primaryPhotoBadge")}</span>}
+                    <button
+                      type="button"
+                      className="attachment-remove-btn"
+                      onClick={() => removeAttachment(a.id)}
+                      aria-label={t("delete")}
+                      title={t("delete")}
+                    >
+                      <CloseIcon />
+                    </button>
+                    {isImage && imageCount > 1 && (
+                      <button
+                        type="button"
+                        className="btn-action attachment-set-primary"
+                        onClick={() => setPhotoUrl(item.id, isPrimary ? null : fileUrl)}
+                      >
+                        {isPrimary ? t("unsetPrimaryPhotoButton") : t("setPrimaryPhotoButton")}
+                      </button>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
-        ))}
+        )}
         <label>
           {t("addAttachmentLabel")}
           <input type="file" accept="image/*,application/pdf" onChange={handleAttachmentUpload} disabled={attachmentUploading} />

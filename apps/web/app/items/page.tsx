@@ -304,6 +304,7 @@ export default function ItemsPage() {
           selectable={selectMode}
           selected={selected.has(item.id)}
           onToggleSelect={() => toggleSelect(item.id)}
+          showWantedToggle
         />
       ))}
       {items.length < total && (

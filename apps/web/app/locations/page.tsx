@@ -112,7 +112,7 @@ export default function LocationsPage() {
             {l.name}
             <span className="meta"> · {t("itemCount", { n: l._count?.items ?? 0 })}</span>
           </div>
-          <button className="secondary" onClick={() => handleDelete(l.id)}>
+          <button type="button" className="btn-action btn-action-danger" onClick={() => handleDelete(l.id)}>
             {t("delete")}
           </button>
         </div>

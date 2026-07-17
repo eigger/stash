@@ -42,6 +42,7 @@ export default function ScanPage() {
   // 새로 생성된 아이템의 id — 이 값과 lastResult.item.id가 같을 때만 미니시트를 보여준다.
   // 이미 있던 아이템의 수량 조정(created:false)에서는 뜨지 않아야 연속 스캔 흐름이 안 끊긴다.
   const [quickEditFor, setQuickEditFor] = useState<string | null>(null);
+  const [quickName, setQuickName] = useState("");
   const [quickLocationId, setQuickLocationId] = useState("");
   const [quickMinQuantity, setQuickMinQuantity] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
@@ -199,6 +200,7 @@ export default function ScanPage() {
       if (result.created) {
         show(t("scanCreatedToast", { name: result.item.name }), "success");
         setQuickEditFor(result.item.id);
+        setQuickName(result.item.name);
         setQuickLocationId("");
         setQuickMinQuantity("");
       } else if (activeMode === "consume") {
@@ -221,15 +223,18 @@ export default function ScanPage() {
     }
   }
 
-  // 신규 생성된 아이템은 위치·최소수량이 비어 있어 대시보드 재고부족/장보기 로직이 바로
-  // 동작하지 않는다 — 스캔 흐름을 벗어나지 않은 채로 그 자리에서 바로 채울 수 있게 한다.
+  // 신규 생성된 아이템은 이름이 조회 실패 시 "미확인 상품 (바코드)"로, 위치·최소수량은
+  // 비어 있는 채로 만들어진다 — 스캔 흐름을 벗어나지 않은 채로 그 자리에서 바로 채울 수 있게 한다.
   async function saveQuickEdit() {
     if (!lastResult) return;
+    const trimmedName = quickName.trim();
+    if (!trimmedName) return;
     setQuickSaving(true);
     try {
       const updated = await apiJson<Item>(`/api/items/${lastResult.item.id}`, {
         method: "PATCH",
         body: JSON.stringify({
+          name: trimmedName,
           locationId: quickLocationId || null,
           minQuantity: quickMinQuantity ? Number(quickMinQuantity) : null,
         }),
@@ -355,6 +360,14 @@ export default function ScanPage() {
       {lastResult && quickEditFor === lastResult.item.id && (
         <div className="card" style={{ marginTop: 8 }}>
           <p className="meta" style={{ marginTop: 0 }}>{t("quickEditHint")}</p>
+          <input
+            placeholder={t("namePlaceholderRequired")}
+            value={quickName}
+            onChange={(e) => setQuickName(e.target.value)}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            style={{ marginBottom: 8 }}
+          />
           <div style={{ display: "flex", gap: 8 }}>
             <select value={quickLocationId} onChange={(e) => setQuickLocationId(e.target.value)} style={{ flex: 1 }}>
               <option value="">{t("selectLocationOptional")}</option>
@@ -374,7 +387,7 @@ export default function ScanPage() {
             />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="button" onClick={saveQuickEdit} disabled={quickSaving} style={{ flex: 1 }}>
+            <button type="button" onClick={saveQuickEdit} disabled={quickSaving || !quickName.trim()} style={{ flex: 1 }}>
               {quickSaving ? t("processingLabel") : t("save")}
             </button>
             <button type="button" className="secondary" onClick={skipQuickEdit} style={{ flex: 1 }}>
