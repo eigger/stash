@@ -191,8 +191,8 @@ const dict = {
   selectLocationOptional: { ko: "위치 선택 (선택)", en: "Choose location (optional)" },
   selectCategoryOptional: { ko: "카테고리 선택 (선택)", en: "Choose category (optional)" },
   barcodePlaceholder: {
-    ko: "기존 바코드 값이 있다면 입력 (선택, 없으면 상세페이지에서 QR 발급)",
-    en: "Enter an existing barcode if you have one (optional — you can issue a QR later)",
+    ko: "기존 바코드 값이 있다면 입력 (선택, 없으면 내부 QR을 자동 발급)",
+    en: "Enter an existing barcode if you have one (optional — an internal QR is issued automatically otherwise)",
   },
   scanBarcodeButton: { ko: "카메라로 스캔", en: "Scan with camera" },
   cancelScanButton: { ko: "닫기", en: "Close" },
@@ -206,17 +206,16 @@ const dict = {
     ko: "아이템은 등록됐지만 사진 업로드에는 실패했습니다 — 상세 페이지에서 다시 시도하세요",
     en: "Item added, but the photo failed to upload — try again from the item detail page",
   },
-  generateAndPrintQrCheckbox: {
-    ko: "등록 후 바로 QR 생성 및 인쇄 요청",
-    en: "Generate and print QR immediately after registration",
-  },
   qrAndPrintSuccessToast: {
     ko: "QR 생성 및 인쇄 요청이 완료되었습니다.",
     en: "QR generated and print request sent.",
   },
-  qrAndPrintFailToast: {
-    ko: "QR 생성 또는 인쇄 요청 실패: {msg}",
-    en: "Failed to generate or print QR: {msg}",
+  registerButton: { ko: "등록", en: "Register" },
+  registerAndPrintButton: { ko: "등록 및 인쇄", en: "Register & Print" },
+  registering: { ko: "등록 중...", en: "Registering..." },
+  printRequestFailToast: {
+    ko: "아이템은 등록됐지만 인쇄 요청에는 실패했습니다: {msg}",
+    en: "Item registered, but the print request failed: {msg}",
   },
   itemTypeConsumable: { ko: "소모품", en: "Consumable" },
   itemTypeAsset: { ko: "자산(기기)", en: "Asset" },
@@ -275,6 +274,7 @@ const dict = {
   },
   addExistingBarcode: { ko: "기존 바코드로 추가", en: "Add as existing barcode" },
   addMatterBarcode: { ko: "Matter 코드로 추가", en: "Add as Matter code" },
+  showMatterOptionButton: { ko: "Matter 코드 옵션 보기", en: "Show Matter code option" },
   addSerialNumberButton: { ko: "시리얼번호로 추가", en: "Add as serial number" },
   matterCodeHint: {
     ko: "스마트홈 기기의 Matter 페어링 코드를 이 아이템의 식별자로만 저장합니다 — 실제 기기 연동(커미셔닝)은 지원하지 않고, 나중에 이 코드로 다시 찾을 수 있게 하는 용도입니다.",

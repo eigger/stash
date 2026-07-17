@@ -57,6 +57,7 @@ export default function ItemDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [busy, setBusy] = useState(true);
   const [manualBarcode, setManualBarcode] = useState("");
+  const [showMatterOption, setShowMatterOption] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -571,12 +572,13 @@ export default function ItemDetailPage() {
         ))}
 
         <div className="fab-row">
-          {item.barcodes.length === 0 ? (
+          {!item.barcodes.some((b) => b.source === "GENERATED") && (
             <>
               <button onClick={generateQr}>{t("generateQrButton")}</button>
               <button className="secondary" onClick={generateAndPrintQr}>{t("generateAndPrintQrButton")}</button>
             </>
-          ) : (
+          )}
+          {item.barcodes.length > 0 && (
             <button className="secondary" onClick={requestPrint}>
               {t("printRequestButton")}
             </button>
@@ -621,20 +623,31 @@ export default function ItemDetailPage() {
           )}
           {scanError && <p className="error-text">{scanError}</p>}
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="secondary" onClick={addManualBarcode} style={{ flex: 1 }}>
-              {t("addExistingBarcode")}
-            </button>
-            <button className="secondary" onClick={addMatterBarcode} style={{ flex: 1 }}>
-              {t("addMatterBarcode")}
-            </button>
-          </div>
+          <button className="secondary" onClick={addManualBarcode} style={{ width: "100%" }}>
+            {t("addExistingBarcode")}
+          </button>
           {item.itemType === "ASSET" && (
             <button className="secondary" onClick={addSerialNumber} style={{ marginTop: 8 }}>
               {t("addSerialNumberButton")}
             </button>
           )}
-          <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
+          {showMatterOption ? (
+            <>
+              <button className="secondary" onClick={addMatterBarcode} style={{ marginTop: 8, width: "100%" }}>
+                {t("addMatterBarcode")}
+              </button>
+              <p className="meta" style={{ fontSize: "0.8rem" }}>{t("matterCodeHint")}</p>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="btn-action"
+              style={{ marginTop: 8 }}
+              onClick={() => setShowMatterOption(true)}
+            >
+              {t("showMatterOptionButton")}
+            </button>
+          )}
         </div>
       </div>
 
