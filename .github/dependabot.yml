@@ -1,10 +1,17 @@
 # Dependabot — 주 1회 npm / Actions / Docker 베이스 이미지 업데이트
+#
+# 정책: minor/patch는 그룹으로 자동 PR. **semver-major는 전부 수동 일괄**
+# (#26–#30을 따로 열었다가 #34에서 한 번에 흡수한 전례 — 메이저 PR을 쪼개면
+# 호환 수정·검증이 분산되고, “봇을 끄거나 한 번에 올리라”는 운영 부담이 생긴다).
 version: 2
 updates:
   - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       production-minor-patch:
         dependency-type: production
