@@ -287,6 +287,7 @@ export async function itemRoutes(app: FastifyInstance) {
         quantity: true,
         currency: true,
         lastAuditedAt: true,
+        createdAt: true,
         itemType: true,
       },
     });

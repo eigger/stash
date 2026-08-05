@@ -95,7 +95,7 @@ const dict = {
   },
   freshnessAuditLink: { ko: "재점검하기", en: "Start an audit" },
   freshnessLocationPct: { ko: "신뢰 {percent}%", en: "{percent}% trust" },
-  freshnessLocationEmpty: { ko: "아이템 없음", en: "No items" },
+  freshnessLocationEmpty: { ko: "이 위치·하위에 아이템 없음", en: "No items here or below" },
 
   // shopping list
   shoppingListTitle: { ko: "장보기 리스트", en: "Shopping list" },

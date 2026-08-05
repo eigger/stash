@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeFreshnessRatio,
+  effectiveAuditedAt,
   freshnessLevel,
   freshnessPercent,
   freshnessThresholdDays,
@@ -29,12 +30,21 @@ describe("freshness (shared)", () => {
     expect(isTrustedFresh(new Date(now.getTime() - 40 * day), "CONSUMABLE", now)).toBe(false);
   });
 
-  it("비율: 미확인은 분모만, 빈 목록은 1", () => {
+  it("lastAuditedAt이 없으면 createdAt으로 폴백 (콜드 스타트)", () => {
+    expect(effectiveAuditedAt(null, new Date(now.getTime() - 5 * day))).toEqual(
+      new Date(now.getTime() - 5 * day),
+    );
+    expect(isTrustedFresh(null, "CONSUMABLE", now, new Date(now.getTime() - 5 * day))).toBe(true);
+    // 2년 전 등록·방치는 여전히 stale — 오래된 데이터를 숨기지 않는다.
+    expect(isTrustedFresh(null, "CONSUMABLE", now, new Date(now.getTime() - 800 * day))).toBe(false);
+  });
+
+  it("비율: 확인 시각·등록 시각 모두 없으면 분모만, 빈 목록은 1", () => {
     expect(computeFreshnessRatio([], now)).toEqual({ freshCount: 0, totalCount: 0, ratio: 1 });
     const ratio = computeFreshnessRatio(
       [
         { lastAuditedAt: new Date(now.getTime() - 5 * day), itemType: "CONSUMABLE" },
-        { lastAuditedAt: null, itemType: "CONSUMABLE" },
+        { lastAuditedAt: null, createdAt: null, itemType: "CONSUMABLE" },
         { lastAuditedAt: new Date(now.getTime() - 100 * day), itemType: "CONSUMABLE" },
       ],
       now,
@@ -43,15 +53,26 @@ describe("freshness (shared)", () => {
     expect(freshnessPercent(ratio.ratio)).toBe(33);
   });
 
-  it("안 쓸 물건 등록은 비율을 내린다", () => {
+  it("오래된 미확인 물건을 넣으면 비율이 내린다", () => {
     const after = computeFreshnessRatio(
       [
         { lastAuditedAt: new Date(now.getTime() - 5 * day), itemType: "CONSUMABLE" },
-        { lastAuditedAt: null, itemType: "ASSET" },
+        { lastAuditedAt: null, createdAt: new Date(now.getTime() - 800 * day), itemType: "ASSET" },
       ],
       now,
     );
     expect(after.ratio).toBe(0.5);
+  });
+
+  it("방금 등록만 한 아이템은 비율을 깎지 않는다 (등록=그 시점 확인)", () => {
+    const after = computeFreshnessRatio(
+      [
+        { lastAuditedAt: new Date(now.getTime() - 5 * day), itemType: "CONSUMABLE" },
+        { lastAuditedAt: null, createdAt: now, itemType: "ASSET" },
+      ],
+      now,
+    );
+    expect(after.ratio).toBe(1);
   });
 
   it("tone 구간", () => {

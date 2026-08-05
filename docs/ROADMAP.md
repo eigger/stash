@@ -94,8 +94,8 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 
 ### P2-B — freshness / inventory trust (this PR)
 
-- **Pure helpers** in `@stash/shared` (`freshness.ts`): CONSUMABLE **30d** / ASSET **365d** thresholds (commented why — tools must not go red in a month). Ratio = trusted items / all non-deleted; never-audited inflate the denominator. Continuous decay (items cross the threshold one by one) — no streak cliff.
-- **API:** `GET /api/items/stats` adds `freshness`; `GET /api/locations` attaches per-location `freshness` for direct children only.
+- **Pure helpers** in `@stash/shared` (`freshness.ts`): CONSUMABLE **30d** / ASSET **365d** thresholds (commented why — tools must not go red in a month). Ratio = trusted items / all non-deleted. Confirm time is `lastAuditedAt ?? createdAt` so a cold deploy does not open at ~0% (“registration is a check”). Continuous decay (items cross the threshold one by one) — no streak cliff. Tests live in `apps/api` importing `@stash/shared` (same pattern as other shared pure logic).
+- **API:** `GET /api/items/stats` adds `freshness`; `GET /api/locations` attaches per-location `freshness` including **descendant** locations (`collectLocationIds`) so a room is not “empty” when only shelves hold items.
 - **UI:** dashboard trust card (“창고가 흐려졌다” tone, link to `/audit`); location tree dots + percent. No freshness push (v1). Expiry warnings stay on the existing system — not duplicated here.
 - **Pause:** live with A+B ≥3 weeks before C/D (workorder §5).
 

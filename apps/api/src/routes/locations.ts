@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { computeFreshnessRatio, freshnessPercent, locationInputSchema } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
+import { collectLocationIds } from "../lib/auditScope.js";
 
 export async function locationRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
@@ -11,23 +12,34 @@ export async function locationRoutes(app: FastifyInstance) {
         orderBy: { name: "asc" },
         include: { _count: { select: { items: true } } },
       }),
-      // 위치별 신선도 — 직접 소속 아이템만 (트리 부모는 자식 행이 따로 보여 줌).
       prisma.item.findMany({
         where: { deletedAt: null, locationId: { not: null } },
-        select: { locationId: true, lastAuditedAt: true, itemType: true },
+        select: { locationId: true, lastAuditedAt: true, createdAt: true, itemType: true },
       }),
     ]);
 
-    const byLocation = new Map<string, { lastAuditedAt: Date | null; itemType: "CONSUMABLE" | "ASSET" }[]>();
+    const tree = locations.map((l) => ({ id: l.id, parentId: l.parentId }));
+    // 방 단위 조망 — 자식 선반·박스 아이템을 부모 비율에 포함한다 (지시서 "어디가 썩는지 한눈에").
+    // 아이템은 리프에만 있어도 주방이 empty로 보이지 않게.
+    const byExact = new Map<
+      string,
+      { lastAuditedAt: Date | null; createdAt: Date; itemType: "CONSUMABLE" | "ASSET" }[]
+    >();
     for (const item of items) {
       if (!item.locationId) continue;
-      const list = byLocation.get(item.locationId);
+      const list = byExact.get(item.locationId);
       if (list) list.push(item);
-      else byLocation.set(item.locationId, [item]);
+      else byExact.set(item.locationId, [item]);
     }
 
     return locations.map((loc) => {
-      const ratio = computeFreshnessRatio(byLocation.get(loc.id) ?? []);
+      const scopeIds = collectLocationIds(tree, loc.id, true);
+      const scoped: { lastAuditedAt: Date | null; createdAt: Date; itemType: "CONSUMABLE" | "ASSET" }[] = [];
+      for (const id of scopeIds) {
+        const chunk = byExact.get(id);
+        if (chunk) scoped.push(...chunk);
+      }
+      const ratio = computeFreshnessRatio(scoped);
       return {
         ...loc,
         freshness: {

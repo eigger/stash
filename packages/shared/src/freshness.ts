@@ -2,9 +2,13 @@
  * Phase 3-B 신선도(재고 신뢰) — 게임 요소를 걷어내도 "언제 확인한 재고인지"가 남는다.
  *
  * 비율 = 임계 안에 확인된 아이템 수 / 전체(삭제 제외).
- * 이미 신선한 걸 다시 찍어도 분자·분모가 안 바뀌고, 안 쓸 물건을 등록하면 분모만 늘어
- * 비율이 내려간다 — 부풀릴 수 없다. 연속일수(streak) 리셋도 없다. 시간이 지나면
- * 아이템이 하나씩 임계를 넘어 비율이 서서히 내려갈 뿐이다.
+ * 이미 신선한 걸 다시 찍어도 분자·분모가 안 바뀌고, 안 쓸·오래된 물건을 등록하면
+ * 분모만 늘어 비율이 내려간다 — 부풀릴 수 없다. 연속일수(streak) 리셋도 없다. 시간이
+ * 지나면 아이템이 하나씩 임계를 넘어 비율이 서서히 내려갈 뿐이다.
+ *
+ * 확인 시각은 lastAuditedAt을 쓰고, 없으면 createdAt으로 폴백한다. 등록 순간도 상태를
+ * 본 것이라 콜드 스타트(전부 null → 첫 화면 8%)를 만들지 않는다. 2년 전 등록·방치는
+ * createdAt이 오래돼 그대로 stale이다.
  */
 
 export type FreshnessItemType = "CONSUMABLE" | "ASSET";
@@ -30,13 +34,23 @@ export function freshnessThresholdDays(itemType: FreshnessItemType): number {
   return FRESHNESS_THRESHOLD_DAYS[itemType];
 }
 
-/** lastAuditedAt이 없으면 null (한 번도 확인 안 함). */
+/** 스캔/재점검 시각이 없으면 등록 시각 — 둘 다 없으면 null. */
+export function effectiveAuditedAt(
+  lastAuditedAt: Date | string | null | undefined,
+  createdAt?: Date | string | null,
+): Date | string | null {
+  return lastAuditedAt ?? createdAt ?? null;
+}
+
+/** 유효 확인 시각이 없으면 null. */
 export function daysSinceAudit(
   lastAuditedAt: Date | string | null | undefined,
   now: Date = new Date(),
+  createdAt?: Date | string | null,
 ): number | null {
-  if (!lastAuditedAt) return null;
-  const at = typeof lastAuditedAt === "string" ? new Date(lastAuditedAt) : lastAuditedAt;
+  const atRaw = effectiveAuditedAt(lastAuditedAt, createdAt);
+  if (!atRaw) return null;
+  const at = typeof atRaw === "string" ? new Date(atRaw) : atRaw;
   if (Number.isNaN(at.getTime())) return null;
   const ms = now.getTime() - at.getTime();
   return Math.max(0, ms / (1000 * 60 * 60 * 24));
@@ -46,8 +60,9 @@ export function freshnessLevel(
   lastAuditedAt: Date | string | null | undefined,
   itemType: FreshnessItemType,
   now: Date = new Date(),
+  createdAt?: Date | string | null,
 ): FreshnessLevel {
-  const days = daysSinceAudit(lastAuditedAt, now);
+  const days = daysSinceAudit(lastAuditedAt, now, createdAt);
   if (days === null) return "unknown";
   const threshold = freshnessThresholdDays(itemType);
   if (days > threshold) return "stale";
@@ -60,8 +75,9 @@ export function isTrustedFresh(
   lastAuditedAt: Date | string | null | undefined,
   itemType: FreshnessItemType,
   now: Date = new Date(),
+  createdAt?: Date | string | null,
 ): boolean {
-  const level = freshnessLevel(lastAuditedAt, itemType, now);
+  const level = freshnessLevel(lastAuditedAt, itemType, now, createdAt);
   return level === "fresh" || level === "aging";
 }
 
@@ -72,15 +88,18 @@ export type FreshnessRatio = {
   ratio: number;
 };
 
-export function computeFreshnessRatio(
-  items: { lastAuditedAt: Date | string | null | undefined; itemType: FreshnessItemType }[],
-  now: Date = new Date(),
-): FreshnessRatio {
+export type FreshnessItemInput = {
+  lastAuditedAt: Date | string | null | undefined;
+  createdAt?: Date | string | null;
+  itemType: FreshnessItemType;
+};
+
+export function computeFreshnessRatio(items: FreshnessItemInput[], now: Date = new Date()): FreshnessRatio {
   const totalCount = items.length;
   if (totalCount === 0) return { freshCount: 0, totalCount: 0, ratio: 1 };
   let freshCount = 0;
   for (const item of items) {
-    if (isTrustedFresh(item.lastAuditedAt, item.itemType, now)) freshCount += 1;
+    if (isTrustedFresh(item.lastAuditedAt, item.itemType, now, item.createdAt)) freshCount += 1;
   }
   return { freshCount, totalCount, ratio: freshCount / totalCount };
 }
