@@ -52,7 +52,7 @@ export function OneTimeSecrets({ title, hint, secrets, downloadFilename, onClose
   const [saved, setSaved] = useState(false);
   const [copyHint, setCopyHint] = useState(false);
   const titleId = useId();
-  const firstValueRef = useRef<HTMLCodeElement>(null);
+  const firstValueRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     firstValueRef.current?.focus();
@@ -142,7 +142,7 @@ export function OneTimeSecrets({ title, hint, secrets, downloadFilename, onClose
                   type="button"
                   className="secondary"
                   onClick={(e) => {
-                    const row = (e.currentTarget.parentElement as HTMLElement | null)?.querySelector("code");
+                    const row = (e.currentTarget.parentElement as HTMLElement | null)?.querySelector("code") ?? null;
                     void handleCopyOne(s.value, row);
                   }}
                 >

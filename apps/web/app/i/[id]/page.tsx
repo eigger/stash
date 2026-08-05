@@ -1,17 +1,12 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-// 내부 발급 QR 라벨이 가리키는 짧은 딥링크(/i/<id>). 실제 상세 페이지로 바로 넘겨준다 —
-// 라벨을 아무 카메라 앱으로 스캔해도 앱이 열리게 하는 게 목적.
-export default function DeepLinkRedirectPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(`/items/${id}`);
-  }, [id, router]);
-
-  return null;
+// 내부 발급 QR 라벨이 가리키는 짧은 딥링크(/i/<id>).
+// 클라이언트 런타임 없이 HTTP 리다이렉트로 상세로 넘긴다 — 라벨 스캔 경로의 First Load를 줄이기 위함.
+export default async function DeepLinkRedirectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(`/items/${id}`);
 }

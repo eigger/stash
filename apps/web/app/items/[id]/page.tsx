@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { BarcodeFormat } from "@zxing/library";
+import type { IScannerControls } from "@zxing/browser";
+import type { BarcodeFormat } from "@zxing/library";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { photoUrlFromFilePath, photoUrlMatches, resolvePhotoUrl } from "../../../lib/media";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
-import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat } from "../../../lib/barcodeScanner";
+import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat, isQrScanFormat } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import type { TranslationKey } from "../../../lib/i18n/translations";
 import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason } from "../../../lib/types";
@@ -78,30 +78,43 @@ export default function ItemDetailPage() {
 
   // 기존 바코드/Matter 페어링 코드 둘 다 박스나 기기에 QR로 찍혀있는 경우가 많아서, 손으로
   // 타이핑하는 대신 카메라로 스캔해 입력란만 채울 수 있게 한다(등록 자체는 아래 버튼으로).
+  // zxing은 스캔 UI를 열 때만 로드 — 상세 First Load에서 스캐너 번들을 빼기 위함.
   useEffect(() => {
     if (!scanning || !videoRef.current) return;
-    const reader = new BrowserMultiFormatReader(SCAN_HINTS);
     let cancelled = false;
 
-    reader
-      .decodeFromConstraints({ video: SCAN_VIDEO_CONSTRAINTS }, videoRef.current, (result) => {
-        if (cancelled || !result) return;
-        playBeep();
-        setManualBarcode(result.getText());
-        setScannedFormat(result.getBarcodeFormat());
-        setScanning(false);
-      })
-      .then((controls) => {
+    void (async () => {
+      const { BrowserCodeReader, BrowserMultiFormatReader } = await import("@zxing/browser");
+      if (cancelled || !videoRef.current) return;
+      const reader = new BrowserMultiFormatReader(SCAN_HINTS);
+      try {
+        const controls = await reader.decodeFromConstraints(
+          { video: SCAN_VIDEO_CONSTRAINTS },
+          videoRef.current,
+          (result) => {
+            if (cancelled || !result) return;
+            playBeep();
+            setManualBarcode(result.getText());
+            setScannedFormat(result.getBarcodeFormat());
+            setScanning(false);
+          },
+        );
+        if (cancelled) {
+          controls.stop();
+          return;
+        }
         controlsRef.current = controls;
         const stream = videoRef.current?.srcObject;
         if (stream instanceof MediaStream) {
           setTorchSupported(BrowserCodeReader.mediaStreamIsTorchCompatible(stream));
         }
-      })
-      .catch(() => {
-        setScanError(t("cameraError"));
-        setScanning(false);
-      });
+      } catch {
+        if (!cancelled) {
+          setScanError(t("cameraError"));
+          setScanning(false);
+        }
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -196,7 +209,7 @@ export default function ItemDetailPage() {
   // 적용한다 — 소모품에서 QR을 스캔한 경우는 그냥 기존 바코드로 저장한다.
   async function addBarcode() {
     if (!item || !manualBarcode.trim()) return;
-    const isMatter = scannedFormat === BarcodeFormat.QR_CODE && item.itemType === "ASSET";
+    const isMatter = scannedFormat != null && isQrScanFormat(scannedFormat) && item.itemType === "ASSET";
     try {
       await apiJson(`/api/items/${item.id}/barcodes`, {
         method: "POST",

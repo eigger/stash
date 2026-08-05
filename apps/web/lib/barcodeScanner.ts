@@ -39,3 +39,8 @@ export function symbologyFromScanFormat(format: BarcodeFormat): BarcodeSymbology
       return "OTHER";
   }
 }
+
+/** 상세/등록 폼이 zxing 값을 정적 import하지 않도록 QR 판정을 여기로 모은다. */
+export function isQrScanFormat(format: BarcodeFormat): boolean {
+  return format === BarcodeFormat.QR_CODE;
+}
