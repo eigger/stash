@@ -10,6 +10,7 @@ import { useLocale } from "../../lib/i18n/locale-context";
 import { enqueueScan, getScanQueue, removeFromScanQueue } from "../../lib/scanQueue";
 import { playBeep, unlockBeepAudio } from "../../lib/beep";
 import { createScanHints, SCAN_VIDEO_CONSTRAINTS } from "../../lib/barcodeScanner";
+import { formatXpToast } from "../../lib/xpToast";
 import { TorchButton } from "../../components/TorchButton";
 import type { Item, Location, ScanResult } from "../../lib/types";
 
@@ -208,7 +209,13 @@ export default function ScanPage() {
       setLastResult(result);
       setLastMode(activeMode);
       if (result.created) {
-        show(t("scanCreatedToast", { name: result.item.name }), "success");
+        const xpLine = formatXpToast(result.xp, t);
+        show(
+          xpLine
+            ? `${t("scanCreatedToast", { name: result.item.name })} · ${xpLine}`
+            : t("scanCreatedToast", { name: result.item.name }),
+          "success",
+        );
         setQuickEditFor(result.item.id);
         setQuickName(result.item.name);
         setQuickLocationId("");
@@ -241,7 +248,7 @@ export default function ScanPage() {
     if (!trimmedName) return;
     setQuickSaving(true);
     try {
-      const updated = await apiJson<Item>(`/api/items/${lastResult.item.id}`, {
+      const updated = await apiJson<Item & { xp?: import("../../lib/types").XpAward }>(`/api/items/${lastResult.item.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           name: trimmedName,
@@ -250,7 +257,8 @@ export default function ScanPage() {
         }),
       });
       setLastResult((prev) => (prev ? { ...prev, item: updated } : prev));
-      show(t("quickEditSavedToast"), "success");
+      const xpLine = formatXpToast(updated.xp, t);
+      show(xpLine ? `${t("quickEditSavedToast")} · ${xpLine}` : t("quickEditSavedToast"), "success");
     } catch (err: any) {
       show(err.message, "error");
     } finally {

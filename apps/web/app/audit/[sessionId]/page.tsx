@@ -11,12 +11,14 @@ import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { createScanHints, SCAN_VIDEO_CONSTRAINTS } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import { buildOrderedLocationTree } from "../../../lib/locationTree";
+import { formatXpToast } from "../../../lib/xpToast";
 import type {
   AuditScanResult,
   AuditSession,
   AuditUnscannedAction,
   Item,
   Location,
+  XpAward,
 } from "../../../lib/types";
 
 const DUPLICATE_COOLDOWN_MS = 2500;
@@ -194,7 +196,7 @@ export default function AuditSessionPage() {
     if (!pending) return;
     setSaving(true);
     try {
-      const res = await apiJson<{ item: Item; session: AuditSession }>(
+      const res = await apiJson<{ item: Item; session: AuditSession; xp?: XpAward }>(
         `/api/audit/sessions/${sessionId}/confirm`,
         {
           method: "POST",
@@ -206,7 +208,13 @@ export default function AuditSessionPage() {
         },
       );
       setSession(res.session);
-      show(t("auditConfirmedToast", { name: res.item.name }), "success");
+      const xpLine = formatXpToast(res.xp, t);
+      show(
+        xpLine
+          ? `${t("auditConfirmedToast", { name: res.item.name })} · ${xpLine}`
+          : t("auditConfirmedToast", { name: res.item.name }),
+        "success",
+      );
       setPending(null);
     } catch (err: any) {
       show(err.message, "error");
@@ -219,7 +227,7 @@ export default function AuditSessionPage() {
     if (!unknown || !unknown.name.trim()) return;
     setSaving(true);
     try {
-      const res = await apiJson<{ item: Item; session: AuditSession }>(
+      const res = await apiJson<{ item: Item; session: AuditSession; xp?: XpAward }>(
         `/api/audit/sessions/${sessionId}/register`,
         {
           method: "POST",
@@ -231,7 +239,13 @@ export default function AuditSessionPage() {
         },
       );
       setSession(res.session);
-      show(t("auditConfirmedToast", { name: res.item.name }), "success");
+      const xpLine = formatXpToast(res.xp, t);
+      show(
+        xpLine
+          ? `${t("auditConfirmedToast", { name: res.item.name })} · ${xpLine}`
+          : t("auditConfirmedToast", { name: res.item.name }),
+        "success",
+      );
       setUnknown(null);
     } catch (err: any) {
       show(err.message, "error");

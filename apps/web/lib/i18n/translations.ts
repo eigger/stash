@@ -97,6 +97,26 @@ const dict = {
   freshnessLocationPct: { ko: "신뢰 {percent}%", en: "{percent}% trust" },
   freshnessLocationEmpty: { ko: "이 위치·하위에 아이템 없음", en: "No items here or below" },
 
+  // Phase 3-C — 품질/확정 XP (표시만, 상점·레벨 없음)
+  xpTitle: { ko: "가구 XP", en: "Household XP" },
+  xpTotalLabel: { ko: "{n} XP", en: "{n} XP" },
+  xpHint: {
+    ko: "꼼꼼히 입력하고, 재점검으로 확인하면 쌓입니다. 순위나 상점은 없습니다.",
+    en: "Earn by filling useful fields and confirming them in an audit. No ranks or shop.",
+  },
+  xpGainedDetailToast: { ko: "+{n} XP ({detail})", en: "+{n} XP ({detail})" },
+  xpReasonLocation: { ko: "위치 +{n}", en: "location +{n}" },
+  xpReasonCategory: { ko: "카테고리 +{n}", en: "category +{n}" },
+  xpReasonBarcode: { ko: "바코드 +{n}", en: "barcode +{n}" },
+  xpReasonPhoto: { ko: "사진 +{n}", en: "photo +{n}" },
+  xpReasonPrice: { ko: "가격 +{n}", en: "price +{n}" },
+  xpReasonMinQuantity: { ko: "최소수량 +{n}", en: "min qty +{n}" },
+  xpReasonExpiry: { ko: "유통기한 +{n}", en: "expiry +{n}" },
+  xpReasonWarranty: { ko: "보증일 +{n}", en: "warranty +{n}" },
+  xpReasonSerial: { ko: "시리얼 +{n}", en: "serial +{n}" },
+  xpReasonConfirmLocation: { ko: "위치 확인 +{n}", en: "location confirmed +{n}" },
+  xpReasonConfirmQuantity: { ko: "수량 일치 +{n}", en: "qty matched +{n}" },
+
   // shopping list
   shoppingListTitle: { ko: "장보기 리스트", en: "Shopping list" },
   shoppingListLink: { ko: "장보기 리스트로 보기", en: "View shopping list" },

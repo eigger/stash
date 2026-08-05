@@ -9,3 +9,4 @@ export * from "./schemas/audit.js";
 export * from "./i18n/index.js";
 export * from "./barcodeSymbology.js";
 export * from "./freshness.js";
+export * from "./xp.js";

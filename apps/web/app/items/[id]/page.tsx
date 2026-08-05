@@ -10,8 +10,9 @@ import { useLocale } from "../../../lib/i18n/locale-context";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat, isQrScanFormat, createScanHints } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
+import { formatXpToast } from "../../../lib/xpToast";
 import type { TranslationKey } from "../../../lib/i18n/translations";
-import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason } from "../../../lib/types";
+import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason, XpAward } from "../../../lib/types";
 
 /** @zxing/browser IScannerControls — 타입만 필요해서 패키지를 정적 import하지 않는다. */
 type ScannerControls = { stop: () => void; switchTorch?: (on: boolean) => Promise<void> };
@@ -169,11 +170,13 @@ export default function ItemDetailPage() {
   async function updateField(field: keyof Item, value: unknown) {
     if (!item) return;
     try {
-      const updated = await apiJson<Item>(`/api/items/${item.id}`, {
+      const updated = await apiJson<Item & { xp?: XpAward }>(`/api/items/${item.id}`, {
         method: "PATCH",
         body: JSON.stringify({ [field]: value }),
       });
       setItem(updated);
+      const xpLine = formatXpToast(updated.xp, t);
+      if (xpLine) show(xpLine, "success");
     } catch (err: any) {
       show(err.message, "error");
     }

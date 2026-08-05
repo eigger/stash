@@ -36,6 +36,16 @@ export interface FreshnessSummary {
   percent: number;
 }
 
+export interface XpBreakdownEntry {
+  reason: string;
+  points: number;
+}
+
+export interface XpAward {
+  total: number;
+  breakdown: XpBreakdownEntry[];
+}
+
 
 export interface Category {
   id: string;
@@ -114,6 +124,7 @@ export interface ScanResult {
   matched: boolean;
   created: boolean;
   lookup?: { found: boolean; name?: string; brand?: string; imageUrl?: string };
+  xp?: XpAward;
 }
 
 export type AuditCheckStatus = "PENDING" | "FOUND" | "UNEXPECTED";

@@ -99,4 +99,11 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **UI:** dashboard trust card (“창고가 흐려졌다” tone, link to `/audit`); location tree dots + percent. No freshness push (v1). Expiry warnings stay on the existing system — not duplicated here.
 - **Pause:** live with A+B ≥3 weeks before C/D (workorder §5).
 
-**Next:** live with A+B ≥3 weeks ([#39](https://github.com/eigger/stash/issues/39)). Do **not** start quality XP (C) or retrospectives (D) until those questions are answered — especially “does stock drift again within a week after an audit?”
+**Next:** optional retrospectives (D). Field-validation issue [#39](https://github.com/eigger/stash/issues/39) still useful for judging whether C is helping or masking input-path problems.
+
+### P3-C — quality + confirm XP (this PR)
+
+- **Pure helpers** `@stash/shared` `xp.ts`: quality weights (useful fields only; ASSET never scored on expiry/minQuantity); confirm XP for audit location/qty match. Delta-only on PATCH so refilling the same field does not farm.
+- **Storage:** `Setting` key `HOUSEHOLD_XP_TOTAL` — household total only, no leaderboard/shop/levels. Starts at 0 (no backfill of historical items).
+- **Hooks:** item create/PATCH (await grant); `/scan` create computes XP in-response and grants in background (no scan latency); audit confirm grants confirm XP only on PENDING→FOUND.
+- **UI:** dashboard total + hint; toasts name which fields paid XP.

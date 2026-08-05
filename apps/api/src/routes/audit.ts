@@ -6,6 +6,8 @@ import {
   auditRegisterSchema,
   auditScanSchema,
   auditSessionStartSchema,
+  computeConfirmXp,
+  computeQualityXp,
   guessSymbology,
   type AuditUnscannedAction,
 } from "@stash/shared";
@@ -13,6 +15,7 @@ import { prisma } from "../lib/prisma.js";
 import { collectLocationIds, computeAuditProgress } from "../lib/auditScope.js";
 import { fireInventoryWebhook } from "../lib/webhook.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
+import { grantHouseholdXp } from "../lib/householdXp.js";
 import { t } from "../lib/i18n.js";
 
 const ITEM_INCLUDE = {
@@ -272,8 +275,15 @@ export async function auditRoutes(app: FastifyInstance) {
 
     const actualQuantity = item.itemType === "ASSET" ? 1 : parsed.data.actualQuantity;
     const existing = session.checks.find((c) => c.itemId === item.id);
+    const wasPending = existing?.status === "PENDING";
     const nextStatus = existing && existing.status !== "UNEXPECTED" ? "FOUND" : "UNEXPECTED";
     const moveLocationId = parsed.data.moveHere ? session.locationId : undefined;
+
+    const allLocations = await prisma.location.findMany({ select: { id: true, parentId: true } });
+    const scopeIds = new Set(
+      collectLocationIds(allLocations, session.locationId, session.includeChildren),
+    );
+    const inScope = item.locationId != null && scopeIds.has(item.locationId);
 
     const { updatedItem } = await prisma.$transaction(async (tx) => {
       const updated = await applyQuantityAdjust(tx, {
@@ -305,11 +315,21 @@ export async function auditRoutes(app: FastifyInstance) {
     // confirm마다 웹훅 1회 — 재점검은 벌크라 수신 자동화 부하가 커질 수 있음(ROADMAP).
     void fireInventoryWebhook("item.updated", updatedItem);
 
+    // 2층 확정 XP — PENDING→FOUND 때만. 이미 확인한 걸 다시 찍어도 반복 수령하지 않는다.
+    let xp = { total: 0, breakdown: [] as { reason: string; points: number }[] };
+    if (wasPending && existing) {
+      xp = computeConfirmXp({
+        locationMatched: inScope,
+        quantityMatched: actualQuantity === existing.expectedQuantity,
+      });
+      if (xp.total > 0) await grantHouseholdXp(xp);
+    }
+
     const refreshed = await prisma.auditSession.findUniqueOrThrow({
       where: { id: session.id },
       include: sessionInclude(),
     });
-    return { item: updatedItem, session: withProgress(refreshed) };
+    return { item: updatedItem, session: withProgress(refreshed), xp };
   });
 
   // 세션 중 미등록 바코드 → 이 위치에 신규 등록 후 UNEXPECTED로 확인 처리.
@@ -376,11 +396,23 @@ export async function auditRoutes(app: FastifyInstance) {
     }
 
     void fireInventoryWebhook("item.updated", item);
+    const xp = computeQualityXp({
+      itemType: item.itemType,
+      locationId: item.locationId,
+      categoryId: item.categoryId,
+      photoUrl: item.photoUrl,
+      price: item.price,
+      minQuantity: item.minQuantity,
+      expiryDate: item.expiryDate,
+      warrantyExpiresAt: item.warrantyExpiresAt,
+      barcodes: item.barcodes,
+    });
+    if (xp.total > 0) void grantHouseholdXp(xp);
     const refreshed = await prisma.auditSession.findUniqueOrThrow({
       where: { id: session.id },
       include: sessionInclude(),
     });
-    return reply.code(201).send({ item, session: withProgress(refreshed) });
+    return reply.code(201).send({ item, session: withProgress(refreshed), xp });
   });
 
   app.post("/sessions/:id/finish", async (request, reply) => {

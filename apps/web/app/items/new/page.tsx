@@ -12,7 +12,8 @@ import { loadDefaultCurrency } from "../../../lib/currency";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
 import { SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat, isQrScanFormat, createScanHints } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
-import type { Item, ItemCondition, ItemType, Location, Category } from "../../../lib/types";
+import { formatXpToast } from "../../../lib/xpToast";
+import type { Item, ItemCondition, ItemType, Location, Category, XpAward } from "../../../lib/types";
 
 /** @zxing/browser IScannerControls — 타입만 필요해서 패키지를 정적 import하지 않는다. */
 type ScannerControls = { stop: () => void; switchTorch?: (on: boolean) => Promise<void> };
@@ -162,7 +163,7 @@ export default function NewItemPage() {
       // 심볼로지도 스캔 포맷 그대로 보낸다. 스캔 없이 손으로 입력했다면 서버가 값
       // 모양으로 심볼로지를 추측하도록 아예 보내지 않는다.
       const isMatter = scannedFormat != null && isQrScanFormat(scannedFormat) && itemType === "ASSET";
-      const item = await apiJson<Item>("/api/items", {
+      const item = await apiJson<Item & { xp?: XpAward }>("/api/items", {
         method: "POST",
         body: JSON.stringify({
           name: name.trim(),
@@ -191,10 +192,12 @@ export default function NewItemPage() {
           const res = await apiFetch(`/api/attachments?itemId=${item.id}`, { method: "POST", body: formData });
           if (!res.ok) throw new Error();
           const attachment = await res.json();
-          await apiJson(`/api/items/${item.id}`, {
+          const patched = await apiJson<Item & { xp?: XpAward }>(`/api/items/${item.id}`, {
             method: "PATCH",
             body: JSON.stringify({ photoUrl: photoUrlFromFilePath(attachment.filePath) }),
           });
+          const photoXp = formatXpToast(patched.xp, t);
+          if (photoXp) show(photoXp, "success");
         } catch {
           // 아이템 자체는 이미 등록됐으니, 사진 업로드 실패로 등록 자체를 막지 않는다 —
           // 상세 페이지에서 다시 올리면 된다.
@@ -202,7 +205,8 @@ export default function NewItemPage() {
         }
       }
 
-      show(t("itemCreatedToast"), "success");
+      const xpLine = formatXpToast(item.xp, t);
+      show(xpLine ? `${t("itemCreatedToast")} · ${xpLine}` : t("itemCreatedToast"), "success");
 
       if (!barcodeValue.trim()) {
         try {
