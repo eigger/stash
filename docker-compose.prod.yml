@@ -20,7 +20,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -lc "npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/dist/index.js"
+    command: sh -lc "npx prisma migrate deploy --config apps/api/prisma.config.ts && node apps/api/dist/index.js"
     volumes:
       - uploads:/app/uploads
     environment:
