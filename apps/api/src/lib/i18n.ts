@@ -120,6 +120,14 @@ const MESSAGES = {
     ko: "옮길 위치를 선택하세요",
     en: "Choose a location to move items to",
   },
+  insightsRangeRequired: {
+    ko: "기간(from·to)이 올바르지 않습니다",
+    en: "Invalid date range (from/to)",
+  },
+  insightsRangeTooLong: {
+    ko: "조회 기간은 최대 3개월입니다",
+    en: "Date range cannot exceed 3 months",
+  },
 } as const;
 
 export type ApiMessageKey = keyof typeof MESSAGES;

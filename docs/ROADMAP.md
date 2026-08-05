@@ -99,7 +99,7 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **UI:** dashboard trust card (“창고가 흐려졌다” tone, link to `/audit`); location tree dots + percent. No freshness push (v1). Expiry warnings stay on the existing system — not duplicated here.
 - **Pause:** live with A+B ≥3 weeks before C/D (workorder §5).
 
-**Next:** optional retrospectives (D). Field-validation issue [#39](https://github.com/eigger/stash/issues/39) still useful for judging whether C is helping or masking input-path problems.
+**Next:** Phase 3 management loop complete (A–D). Field-validation issue [#39](https://github.com/eigger/stash/issues/39) remains useful for judging whether C/D help or mask input-path problems.
 
 ### P3-C — quality + confirm XP (this PR)
 
@@ -107,3 +107,11 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **Confirm (layer 2):** cumulative in `Setting` key `HOUSEHOLD_CONFIRM_XP`, incremented with a single SQL `INSERT … ON CONFLICT DO UPDATE` so concurrent audit/scan grants cannot drop updates. Awarded only on audit PENDING→FOUND. **Backup/restore resets confirm XP to 0** — `Setting` is excluded from backups (secrets), and `AuditSession` is also excluded (ephemeral work state), so there is no safe way to rebuild the counter; quality XP still reappears from restored items.
 - **Display:** `GET /api/xp` → `{ quality, confirm, total }` (quality is recomputed from all live items + barcodes each request — fine at household scale; if the dashboard ever feels slow, fold this into `/api/items/stats` so the same rows are not scanned twice). No shop/levels/leaderboard. No historical backfill of confirm XP.
 - **Hooks:** create/PATCH/scan return quality toast payload only; scan match path still grants nothing (anti-pattern: scan-count rewards).
+
+### P3-D — retrospectives / insights (this PR)
+
+- **Why:** reward the labor of keeping stock with facts, not badges (§2.3). Built only from `StockMovement` + `Item.price`/`purchaseDate`/`lastAuditedAt`/`createdAt` — no new tables.
+- **Pure helpers** in `@stash/shared` (`insights.ts`): untouched (≥365d via `lastAuditedAt ?? createdAt`), top CONSUME this month, duplicate RESTOCK (≥2 in range), purchased-in-range (`purchaseDate ?? createdAt`) with `totalByCurrency`. Month bounds come from the client as ISO `from`/`to` (local calendar) so the server never guesses timezone.
+- **API:** `GET /api/insights?from=&to=` (max ~3 months). Soft-deleted items excluded; ADJUST never counts as consume/purchase.
+- **UI:** `/insights` (month pager) + dashboard link + More menu. Copy is factual only — no “waste” sermons. `purchaseDate` still has no form field; totals fall back to registration date (documented in the hint).
+- **Out of scope:** judgmental copy, XP shop, purchaseDate form (separate if needed).

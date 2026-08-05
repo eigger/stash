@@ -46,6 +46,47 @@ export interface XpAward {
   breakdown: XpBreakdownEntry[];
 }
 
+export interface InsightsUntouched {
+  id: string;
+  name: string;
+  itemType: ItemType;
+  lastTouchAt: string;
+  daysSinceTouch: number;
+}
+
+export interface InsightsConsumed {
+  itemId: string;
+  name: string;
+  consumedQty: number;
+}
+
+export interface InsightsDuplicate {
+  itemId: string;
+  name: string;
+  restockCount: number;
+  restockQty: number;
+}
+
+export interface InsightsPurchasedItem {
+  id: string;
+  name: string;
+  price: number | null;
+  currency: string | null;
+  purchasedAt: string;
+}
+
+export interface InsightsResponse {
+  range: { start: string; end: string };
+  untouchedDays: number;
+  untouched: InsightsUntouched[];
+  topConsumed: InsightsConsumed[];
+  duplicatePurchases: InsightsDuplicate[];
+  purchased: {
+    items: InsightsPurchasedItem[];
+    totalByCurrency: Record<string, number>;
+  };
+}
+
 
 export interface Category {
   id: string;

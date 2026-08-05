@@ -153,6 +153,10 @@ export default function DashboardPage() {
         </p>
       )}
 
+      <p className="meta" style={{ marginTop: 0 }}>
+        <Link href="/insights">{t("insightsDashboardLink")}</Link>
+      </p>
+
       {busy && <p>{t("loading")}</p>}
 
       {!busy && loadFailed && <p className="error-text">{t("dashboardLoadFailed")}</p>}
