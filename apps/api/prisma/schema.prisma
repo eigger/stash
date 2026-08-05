@@ -47,6 +47,21 @@ enum StockMovementReason {
   ADJUST
 }
 
+// 위치 단위 재점검 세션 상태. ACTIVE만 가구당 하나 — 중단 후 이어서 할 수 있게 DB에 둔다.
+enum AuditSessionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// 세션 시작 시 스냅샷된 기대 아이템(PENDING) vs 스캔으로 확인(FOUND) vs
+// 원래 이 위치 목록에 없었지만 스캔으로 들어온 것(UNEXPECTED).
+enum AuditCheckStatus {
+  PENDING
+  FOUND
+  UNEXPECTED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -60,6 +75,7 @@ model User {
   createdItems      Item[]              @relation("ItemCreatedBy")
   movements         StockMovement[]
   pushSubscriptions PushSubscription[]
+  auditSessions     AuditSession[]
 }
 
 // 방 > 선반 > 박스 같은 계층형 위치. 자기참조로 트리를 표현한다.
@@ -74,6 +90,7 @@ model Location {
   parent   Location?  @relation("LocationTree", fields: [parentId], references: [id], onDelete: Cascade)
   children Location[] @relation("LocationTree")
   items    Item[]
+  auditSessions AuditSession[]
 }
 
 // 2단 정도의 단순 카테고리 트리
@@ -127,6 +144,7 @@ model Item {
   attachments        Attachment[]
   movements          StockMovement[]
   maintenanceRecords MaintenanceRecord[]
+  auditChecks        AuditCheck[]
 
   @@index([locationId])
   @@index([categoryId])
@@ -224,4 +242,42 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// 위치 단위 재점검 세션. 게임화(XP)보다 먼저 있어야 하는 "되돌릴 수단" —
+// 한 번 틀어진 재고를 위치 단위로 다시 맞출 수 있어야 방치를 포기하지 않는다.
+// 백업/복원 대상에서 제외한다 — 진행 중 작업 상태라 복원 후 의미가 없고, 아이템/위치는
+// 이미 별도로 보존된다.
+model AuditSession {
+  id              String             @id @default(cuid())
+  locationId      String
+  // true면 하위 위치 아이템까지 기대 목록에 포함한다.
+  includeChildren Boolean            @default(true)
+  status          AuditSessionStatus @default(ACTIVE)
+  startedById     String?
+  startedAt       DateTime           @default(now())
+  completedAt     DateTime?
+
+  location  Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  startedBy User?        @relation(fields: [startedById], references: [id], onDelete: SetNull)
+  checks    AuditCheck[]
+
+  @@index([status])
+}
+
+model AuditCheck {
+  id               String           @id @default(cuid())
+  sessionId        String
+  itemId           String
+  // 세션 시작(또는 발견) 시점의 수량 스냅샷 — 정정 delta 계산에 쓴다.
+  expectedQuantity Int
+  actualQuantity   Int?
+  status           AuditCheckStatus @default(PENDING)
+  checkedAt        DateTime?
+
+  session AuditSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  item    Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, itemId])
+  @@index([sessionId, status])
 }

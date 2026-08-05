@@ -69,3 +69,26 @@ Decisions and tradeoffs for the hardening pass (ordered by impact):
 - **Logout vs logout-all.** Default `POST /logout` clears the media cookie only (this device). `POST /logout-all` bumps `tokenVersion` for every device. Password change still always bumps. **Tradeoff:** after a normal logout a stolen Bearer can remain valid up to 7d — "log out everywhere" is offered prominently in Settings instead of making every logout wipe the kitchen tablet.
 - **Label deep-link / bundle.** `/i/[id]` is a server `redirect()` to `/items/[id]` (no client runtime for the hop). Item detail/new never statically import `@zxing/*` — `createScanHints()` + `import("@zxing/browser")` run only when the add-barcode scanner opens; `symbologyFromScanFormat` / `isQrScanFormat` use numeric format constants guarded by `barcodeScanner.test.ts` against `@zxing/library` enums. `/scan` keeps eager zxing. **Measured** (`npm run measure:zxing` after web build): detail/new manifests do not mention library/browser; scan pulls the ~443 KB `@zxing/library` chunk (~563 KB page total). The script's `zxingInThoseKB` is a substring upper bound (see script comment), not exact decoder bytes.
 - **Backup export ticket.** Admin gets a 60s JWT (`purpose:"backup"`, `jti`) then opens `/api/backup/export?ticket=…` in a new tab (`target="_blank"`) for `createReadStream` delivery so a failed ticket does not replace the SPA. Consumed jtis live in process memory and are deleted after 60s; multi-instance still does not share the set.
+
+## Phase 3 — management persistence / gamification (in progress)
+
+Hypothesis (not a confirmed defect): people abandon inventory when drift can't be fixed quickly, and when careful entry feels the same as sloppy entry. Rewards are layered so they don't Goodhart each other:
+
+| Layer | When | Rewards | Failure it blocks |
+|-------|------|---------|-------------------|
+| 1 Quality XP | On entry | Field completeness (useful fields weighted) | Sloppy input |
+| 2 Confirm XP | On later verification | Accuracy (found at recorded location / qty match) | Filling garbage for points |
+| 3 Freshness | Continuous decay | Trust state of stock | Neglect / drift |
+
+**Order:** A → B → *(pause ≥3 weeks)* → C → D. Do not ship C/D before living with A+B.
+
+### P1-A — location audit mode (this PR)
+
+- **Why first:** without a way to correct a whole shelf in minutes, freshness (B) only shows guilt. Game-wise it's a session with clear start/end/progress.
+- **Model:** `AuditSession` + `AuditCheck` (PENDING/FOUND/UNEXPECTED). One ACTIVE session per household; persisted so closing the app doesn't corrupt confirmed fixes. **Not** in backup/restore — ephemeral work state; items/locations already are.
+- **API:** `POST/GET /api/audit/sessions`, `…/scan`, `…/confirm`, `…/register`, `…/finish`, `…/cancel`. Scan confirms presence (does not +/- stock). Quantity fixes use `StockMovement` `ADJUST`. Finish asks what to do with unscanned rows (`ZERO` / `MOVE` / `LEAVE`) — **never auto-delete**.
+- **UI:** `/audit` + `/audit/[sessionId]`; reuses `createScanHints()` / scanner chrome from `/scan`. Online-only for v1 (session is stateful; offline queue has no location/mode metadata).
+- **`lastAuditedAt`:** already updated on `/scan`; now also when `PATCH`/`POST …/quantity` actually changes quantity (manual confirm counts as an audit).
+- **Anti-patterns deferred:** streaks, leaderboards, badges/levels, lossy push nags — see workorder §2.2–2.3 (“useful with game stripped off”).
+
+**Next:** B freshness ratios (CONSUMABLE vs ASSET thresholds), then stop for field validation before C/D.

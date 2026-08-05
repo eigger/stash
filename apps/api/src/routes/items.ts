@@ -416,6 +416,15 @@ export async function itemRoutes(app: FastifyInstance) {
     } else if (rest.itemType === "CONSUMABLE") {
       data.condition = null;
     }
+    // 손으로 수량을 고친 것도 "확인"으로 친다 — 스캔만 lastAuditedAt을 갱신하면
+    // 상세에서 맞춘 재고가 신선도에서 계속 낡아 보인다. 수량이 실제로 바뀔 때만.
+    if (typeof rest.quantity === "number") {
+      const before = await prisma.item.findUnique({ where: { id }, select: { quantity: true } });
+      if (before && before.quantity !== rest.quantity) {
+        data.lastAuditedAt = new Date();
+      }
+    }
+
     const item = await prisma.item.update({
       where: { id },
       data,
@@ -470,10 +479,19 @@ export async function itemRoutes(app: FastifyInstance) {
     if (!item) return reply.code(404).send({ error: t("itemNotFound", request.locale) });
 
     const nextQuantity = Math.max(0, item.quantity + delta);
+    const appliedDelta = nextQuantity - item.quantity;
     const [updated] = await prisma.$transaction([
-      prisma.item.update({ where: { id }, data: { quantity: nextQuantity }, include: ITEM_INCLUDE }),
+      prisma.item.update({
+        where: { id },
+        // +/- 로 수량을 맞춘 것도 현장 확인으로 본다 (재점검·신선도의 원천).
+        data: {
+          quantity: nextQuantity,
+          ...(appliedDelta !== 0 ? { lastAuditedAt: new Date() } : {}),
+        },
+        include: ITEM_INCLUDE,
+      }),
       prisma.stockMovement.create({
-        data: { itemId: id, delta: nextQuantity - item.quantity, reason, userId: request.user.sub },
+        data: { itemId: id, delta: appliedDelta, reason, userId: request.user.sub },
       }),
     ]);
     void fireInventoryWebhook("item.updated", updated);

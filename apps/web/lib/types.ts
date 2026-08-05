@@ -106,3 +106,53 @@ export interface ScanResult {
   created: boolean;
   lookup?: { found: boolean; name?: string; brand?: string; imageUrl?: string };
 }
+
+export type AuditCheckStatus = "PENDING" | "FOUND" | "UNEXPECTED";
+export type AuditSessionStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type AuditUnscannedAction = "ZERO" | "MOVE" | "LEAVE";
+
+export interface AuditCheck {
+  id: string;
+  sessionId: string;
+  itemId: string;
+  expectedQuantity: number;
+  actualQuantity: number | null;
+  status: AuditCheckStatus;
+  checkedAt: string | null;
+  item: Item;
+}
+
+export interface AuditProgress {
+  expectedTotal: number;
+  foundExpected: number;
+  pending: number;
+  unexpected: number;
+}
+
+export interface AuditSession {
+  id: string;
+  locationId: string;
+  includeChildren: boolean;
+  status: AuditSessionStatus;
+  startedAt: string;
+  completedAt: string | null;
+  location: Location;
+  checks: AuditCheck[];
+  progress: AuditProgress;
+}
+
+export type AuditScanResult =
+  | {
+      status: "unknown";
+      barcodeValue: string;
+      session: AuditSession;
+    }
+  | {
+      status: "expected" | "already_found" | "unexpected";
+      item: Item;
+      check: AuditCheck | null;
+      inScope: boolean;
+      sessionLocationId: string;
+      session: AuditSession;
+    };
+

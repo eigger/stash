@@ -17,6 +17,7 @@ import { labelRoutes } from "./routes/labels.js";
 import { movementRoutes } from "./routes/movements.js";
 import { maintenanceRoutes } from "./routes/maintenance.js";
 import { pushRoutes } from "./routes/push.js";
+import { auditRoutes } from "./routes/audit.js";
 import { startExpiryNotificationJob } from "./jobs/expiryNotifications.js";
 import { startTrashPurgeJob } from "./jobs/trashPurge.js";
 import { startLowStockSummaryJob } from "./jobs/lowStockSummary.js";
@@ -159,6 +160,7 @@ await app.register(labelRoutes, { prefix: "/api/labels" });
 await app.register(movementRoutes, { prefix: "/api/movements" });
 await app.register(maintenanceRoutes, { prefix: "/api" });
 await app.register(pushRoutes, { prefix: "/api/push" });
+await app.register(auditRoutes, { prefix: "/api/audit" });
 
 startExpiryNotificationJob();
 startTrashPurgeJob();

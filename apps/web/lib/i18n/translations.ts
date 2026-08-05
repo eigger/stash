@@ -597,6 +597,72 @@ const dict = {
   enabledToast: { ko: "알림이 켜졌습니다", en: "Notifications enabled" },
   testSentToast: { ko: "테스트 알림을 보냈습니다", en: "Test notification sent" },
   disabledToast: { ko: "알림이 꺼졌습니다", en: "Notifications disabled" },
+
+  // Phase 3-A — 위치 단위 재점검
+  auditTitle: { ko: "재점검", en: "Audit" },
+  auditNavLabel: { ko: "재점검", en: "Audit" },
+  auditIntro: {
+    ko: "위치를 골라 그곳 물건을 하나씩 확인합니다. 수량이 틀리면 그 자리에서 고칩니다.",
+    en: "Pick a location and confirm what's there. Fix quantities on the spot when they don't match.",
+  },
+  auditIncludeChildren: { ko: "하위 위치 포함", en: "Include child locations" },
+  auditStartButton: { ko: "재점검 시작", en: "Start audit" },
+  auditResumeButton: { ko: "이어하기", en: "Resume" },
+  auditActiveHint: {
+    ko: "진행 중인 재점검이 있습니다: {name}",
+    en: "An audit is already in progress: {name}",
+  },
+  auditProgress: {
+    ko: "{found} / {total} 확인 · 남은 {pending}",
+    en: "{found} / {total} checked · {pending} left",
+  },
+  auditUnexpectedCount: { ko: "목록 밖 {n}개", en: "{n} unexpected" },
+  auditHint: {
+    ko: "바코드를 찍으면 수량을 확인하고 넘어갑니다. 입고/소비가 아닙니다.",
+    en: "Scanning confirms what's here — it does not restock or consume.",
+  },
+  auditConfirmButton: { ko: "확인", en: "Confirm" },
+  auditMoveHere: { ko: "이 위치로 옮김", en: "Move here" },
+  auditAlreadyFound: { ko: "이미 확인함", en: "Already checked" },
+  auditOutOfScope: {
+    ko: "다른 위치에 기록된 물건입니다. 여기로 옮길 수 있습니다.",
+    en: "This item is recorded elsewhere. You can move it here.",
+  },
+  auditUnknownTitle: { ko: "등록되지 않은 바코드", en: "Unregistered barcode" },
+  auditUnknownHint: {
+    ko: "이 위치에 새 아이템으로 등록합니다.",
+    en: "Register it as a new item at this location.",
+  },
+  auditRegisterButton: { ko: "등록하고 확인", en: "Register & confirm" },
+  auditFinishButton: { ko: "재점검 끝내기", en: "Finish audit" },
+  auditCancelButton: { ko: "세션 취소", en: "Cancel session" },
+  auditCancelConfirm: {
+    ko: "이미 확인한 수량은 유지됩니다. 남은 미확인 항목은 그대로 두고 세션만 닫습니다. 계속할까요?",
+    en: "Confirmed quantities stay. Unchecked items are left as-is and only the session closes. Continue?",
+  },
+  auditFinishTitle: { ko: "안 찍힌 물건 처리", en: "Unchecked items" },
+  auditFinishHint: {
+    ko: "스캔하지 않은 {n}개를 어떻게 할까요? 자동으로 지우지는 않습니다.",
+    en: "What should happen to {n} unchecked item(s)? Nothing is deleted automatically.",
+  },
+  auditActionZero: { ko: "없어진 것으로 (수량 0)", en: "Mark missing (qty 0)" },
+  auditActionMove: { ko: "다른 곳으로 옮김", en: "Move elsewhere" },
+  auditActionLeave: { ko: "그대로 둠", en: "Leave as-is" },
+  auditMoveToLabel: { ko: "옮길 위치", en: "Move to" },
+  auditFinishSubmit: { ko: "적용하고 끝내기", en: "Apply & finish" },
+  auditDoneToast: { ko: "재점검을 마쳤습니다", en: "Audit finished" },
+  auditCancelledToast: { ko: "재점검을 취소했습니다", en: "Audit cancelled" },
+  auditConfirmedToast: { ko: "확인: {name}", en: "Confirmed: {name}" },
+  auditNoLocations: {
+    ko: "먼저 위치를 하나 이상 만들어 주세요.",
+    en: "Create at least one location first.",
+  },
+  auditOnlineOnly: {
+    ko: "재점검은 온라인에서만 됩니다. 연결을 확인하세요.",
+    en: "Audits require a network connection.",
+  },
+  auditPendingList: { ko: "아직 안 찍힌 목록", en: "Still unchecked" },
+  selectLocationRequired: { ko: "위치를 선택하세요", en: "Select a location" },
 } as const;
 
 export type TranslationKey = keyof typeof dict;

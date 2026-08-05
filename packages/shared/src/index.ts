@@ -5,5 +5,6 @@ export * from "./schemas/item.js";
 export * from "./schemas/barcode.js";
 export * from "./schemas/settings.js";
 export * from "./schemas/push.js";
+export * from "./schemas/audit.js";
 export * from "./i18n/index.js";
 export * from "./barcodeSymbology.js";

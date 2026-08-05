@@ -105,6 +105,21 @@ const MESSAGES = {
     en: "This is a test notification. If it arrived, your push setup is working.",
   },
   forbiddenSubscription: { ko: "다른 사용자의 구독입니다", en: "This subscription belongs to another user" },
+
+  locationNotFound: { ko: "위치를 찾을 수 없습니다", en: "Location not found" },
+  auditSessionNotFound: { ko: "재점검 세션을 찾을 수 없습니다", en: "Audit session not found" },
+  auditSessionNotActive: {
+    ko: "이미 종료된 재점검 세션입니다",
+    en: "This audit session is no longer active",
+  },
+  auditSessionAlreadyActive: {
+    ko: "이미 진행 중인 재점검이 있습니다. 이어서 진행하거나 취소하세요.",
+    en: "An audit is already in progress. Resume it or cancel first.",
+  },
+  auditMoveTargetRequired: {
+    ko: "옮길 위치를 선택하세요",
+    en: "Choose a location to move items to",
+  },
 } as const;
 
 export type ApiMessageKey = keyof typeof MESSAGES;
