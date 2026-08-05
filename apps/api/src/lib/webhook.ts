@@ -5,9 +5,15 @@ import { prisma } from "./prisma.js";
 const DEFAULT_APP_PUBLIC_URL = "http://localhost:3000";
 const LAST_FAILURE_KEY = "WEBHOOK_LAST_FAILURE";
 
+/** 총 시도 3회(최초 + 재시도 2). 간격은 1s → 4s — HA 재시작 정도의 짧은 끊김을 흡수하되 CRUD를 막지 않는다. */
+export const WEBHOOK_MAX_ATTEMPTS = 3;
+export const WEBHOOK_BACKOFF_MS = [0, 1000, 4000] as const;
+
 export interface WebhookFailure {
   at: string;
   message: string;
+  /** 최종 실패까지 수행한 시도 횟수(1–3). 구기록에는 없을 수 있다. */
+  attempts?: number;
 }
 
 // 실패는 토스트 한 번으로 끝나서 나중에 "왜 프린터가 안 찍혔지"를 확인할 방법이 없었다 —
@@ -100,13 +106,32 @@ export function signWebhookBody(secret: string, timestampSec: number, body: stri
   return `sha256=${mac}`;
 }
 
+/**
+ * 4xx는 설정 오류라 반복해도 동일 — 재시도하지 않는다.
+ * 5xx / 네트워크·타임아웃(status 없음)만 재시도 대상.
+ */
+export function isWebhookRetryableFailure(status: number | undefined): boolean {
+  if (status === undefined) return true;
+  return status >= 500 && status < 600;
+}
+
+/** 0-based attempt index → 다음 시도 전 대기 ms. 범위 밖이면 마지막 간격을 쓴다. */
+export function webhookBackoffMs(attemptIndex: number): number {
+  if (attemptIndex <= 0) return WEBHOOK_BACKOFF_MS[0];
+  return WEBHOOK_BACKOFF_MS[Math.min(attemptIndex, WEBHOOK_BACKOFF_MS.length - 1)] ?? 4000;
+}
+
 export async function isInventoryWebhookConfigured(): Promise<boolean> {
   const url = await getSetting("INVENTORY_WEBHOOK_URL", process.env.INVENTORY_WEBHOOK_URL);
   return Boolean(url);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Fire-and-forget: 웹훅 수신 쪽 문제(다운/타임아웃)가 재고 CRUD를 막아서는 안 되므로
-// 실패는 조용히 무시한다. 설정된 웹훅이 없으면 아무 것도 하지 않는다.
+// 호출부는 await 하지 않는다. 프로세스 메모리에서만 재시도하므로 재시작 시 진행 중 재시도는 유실된다.
 export async function fireInventoryWebhook(
   event: InventoryWebhookEvent,
   item: WebhookItem,
@@ -119,28 +144,49 @@ export async function fireInventoryWebhook(
   const payload = buildWebhookPayload(event, item, baseUrl, barcodeId);
   // stringify 결과를 변수에 담아 서명과 body에 같은 바이트를 쓴다.
   const body = JSON.stringify(payload);
-
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  // 시크릿 미설정 시 기존 동작 유지(하위 호환). 이미 배포된 자동화를 깨면 안 된다.
   const secret = await getSetting("INVENTORY_WEBHOOK_SECRET");
-  if (secret) {
-    const ts = Math.floor(Date.now() / 1000);
-    headers["X-Stash-Timestamp"] = String(ts);
-    headers["X-Stash-Signature"] = signWebhookBody(secret, ts, body);
+
+  let lastError = "unknown";
+  let attempts = 0;
+
+  for (let i = 0; i < WEBHOOK_MAX_ATTEMPTS; i++) {
+    const wait = webhookBackoffMs(i);
+    if (wait > 0) await sleep(wait);
+    attempts = i + 1;
+
+    // 매 시도마다 타임스탬프·서명을 새로 만든다 — 수신 측이 신선도를 검사할 수 있다.
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (secret) {
+      const ts = Math.floor(Date.now() / 1000);
+      headers["X-Stash-Timestamp"] = String(ts);
+      headers["X-Stash-Signature"] = signWebhookBody(secret, ts, body);
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body,
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        await clearLastWebhookFailure();
+        return;
+      }
+      lastError = `HTTP ${res.status}`;
+      if (!isWebhookRetryableFailure(res.status)) break;
+    } catch (err: any) {
+      lastError = err.message || String(err);
+      // 네트워크/타임아웃 → 재시도
+    }
   }
 
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body,
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    await clearLastWebhookFailure();
-  } catch (err: any) {
-    // 재시도는 웹훅을 받는 쪽 자동화의 몫 — 여기서는 그냥 무시하되, 나중에 설정 화면에서
-    // "왜 안 왔지"를 확인할 수 있도록 마지막 실패만 기록해둔다.
-    await setSetting(LAST_FAILURE_KEY, JSON.stringify({ at: new Date().toISOString(), message: err.message || String(err) }));
-  }
+  await setSetting(
+    LAST_FAILURE_KEY,
+    JSON.stringify({
+      at: new Date().toISOString(),
+      message: lastError,
+      attempts,
+    } satisfies WebhookFailure),
+  );
 }

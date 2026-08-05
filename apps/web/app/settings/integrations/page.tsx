@@ -17,6 +17,7 @@ interface SettingRow {
 interface WebhookFailure {
   at: string;
   message: string;
+  attempts?: number;
 }
 
 const LOOKUP_PROVIDER_OPTIONS = [
@@ -365,7 +366,11 @@ export default function IntegrationsPage() {
         <p className="meta">{t("statusLabel")} {webhook?.hasValue ? t("statusSet") : t("statusUnset")}</p>
         {webhook?.hasValue && webhookFailure && (
           <p className="error-text" style={{ fontSize: "0.85rem" }}>
-            {t("webhookLastFailureLabel", { at: formatDateTime(webhookFailure.at), msg: webhookFailure.message })}
+            {t("webhookLastFailureLabel", {
+              at: formatDateTime(webhookFailure.at),
+              msg: webhookFailure.message,
+              attempts: webhookFailure.attempts ?? 1,
+            })}
           </p>
         )}
         <form onSubmit={handleWebhookSave} className="form">

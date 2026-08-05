@@ -1,6 +1,12 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { buildLabelImageUrl, buildWebhookPayload, signWebhookBody } from "./webhook.js";
+import {
+  buildLabelImageUrl,
+  buildWebhookPayload,
+  isWebhookRetryableFailure,
+  signWebhookBody,
+  webhookBackoffMs,
+} from "./webhook.js";
 
 describe("buildLabelImageUrl", () => {
   it("builds a public label.png URL from the given base URL", () => {
@@ -129,5 +135,27 @@ describe("signWebhookBody", () => {
     const c = signWebhookBody("s", 1, '{"a":2}');
     expect(a).not.toBe(b);
     expect(a).not.toBe(c);
+  });
+});
+
+describe("isWebhookRetryableFailure", () => {
+  it("retries network errors (no status) and 5xx", () => {
+    expect(isWebhookRetryableFailure(undefined)).toBe(true);
+    expect(isWebhookRetryableFailure(500)).toBe(true);
+    expect(isWebhookRetryableFailure(503)).toBe(true);
+  });
+
+  it("does not retry 4xx", () => {
+    expect(isWebhookRetryableFailure(400)).toBe(false);
+    expect(isWebhookRetryableFailure(404)).toBe(false);
+    expect(isWebhookRetryableFailure(422)).toBe(false);
+  });
+});
+
+describe("webhookBackoffMs", () => {
+  it("uses 0 / 1s / 4s for the three planned attempts", () => {
+    expect(webhookBackoffMs(0)).toBe(0);
+    expect(webhookBackoffMs(1)).toBe(1000);
+    expect(webhookBackoffMs(2)).toBe(4000);
   });
 });

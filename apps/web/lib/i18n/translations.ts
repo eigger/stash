@@ -416,8 +416,8 @@ const dict = {
     en: 'Sends item info to this URL whenever an item is created/changed, and whenever "Send to printer" is requested from the item/labels screens. Use it to connect a webhook-capable printer/label-device automation (e.g. Home Assistant) — the actual printing or device control is entirely up to the receiver.',
   },
   webhookLastFailureLabel: {
-    ko: "마지막 실패: {at} — {msg}",
-    en: "Last failure: {at} — {msg}",
+    ko: "마지막 실패 ({attempts}회 시도): {at} — {msg}",
+    en: "Last failure ({attempts} attempts): {at} — {msg}",
   },
   viewPayloadFields: { ko: "전송되는 데이터 보기", en: "View payload fields" },
   payloadEventDesc: {
