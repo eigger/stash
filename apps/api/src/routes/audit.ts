@@ -412,70 +412,85 @@ export async function auditRoutes(app: FastifyInstance) {
     const userId = request.user.sub;
     const sessionLocationId = session.locationId;
 
-    // 한 트랜잭션 — 검증 실패·중간 오류 시 재고가 반만 바뀌지 않게. 체크 갱신은 액션별 updateMany.
-    const { completed, webhookItemIds } = await prisma.$transaction(async (tx) => {
-      const webhookIds: string[] = [];
-      const zeroCheckIds: string[] = [];
-      const moveCheckIds: string[] = [];
-      const movements: { itemId: string; delta: number; reason: "ADJUST"; userId: string }[] = [];
+    // 큰 위치에서도 기본 5초 interactive 타임아웃에 안 걸리게 여유를 둔다.
+    // 아이템 갱신은 동일 data끼리 updateMany로 묶어 왕복을 줄인다.
+    const { completed, webhookItemIds } = await prisma.$transaction(
+      async (tx) => {
+        const webhookIds: string[] = [];
+        const zeroCheckIds: string[] = [];
+        const movePlans: FinishPlan[] = [];
+        const movements: { itemId: string; delta: number; reason: "ADJUST"; userId: string }[] = [];
 
-      for (const plan of planned.plans) {
-        if (plan.action === "LEAVE") continue;
+        const zeroAlreadyZeroIds: string[] = [];
+        const zeroWithQtyIds: string[] = [];
+        // 타깃 locationId → 옮길 itemId들
+        const moveByTarget = new Map<string, string[]>();
 
-        // 세션 중 휴지통으로 간 아이템은 건드리지 않는다 — ZERO가 되살리면 의미가 반대다.
-        // 체크만 FOUND로 올려 세션을 닫을 수 있게 한다.
-        if (plan.deletedAt) {
-          if (plan.action === "ZERO") zeroCheckIds.push(plan.checkId);
-          else moveCheckIds.push(plan.checkId);
-          continue;
-        }
-
-        if (plan.action === "ZERO") {
-          if (plan.quantity === 0) {
-            await tx.item.update({
-              where: { id: plan.itemId },
-              data: { lastAuditedAt: now },
-            });
-          } else {
-            await tx.item.update({
-              where: { id: plan.itemId },
-              data: { quantity: 0, lastAuditedAt: now },
-            });
-            movements.push({
-              itemId: plan.itemId,
-              delta: -plan.quantity,
-              reason: "ADJUST",
-              userId,
-            });
-          }
-          webhookIds.push(plan.itemId);
-          zeroCheckIds.push(plan.checkId);
-          continue;
-        }
-
-        // MOVE
-        const target = plan.moveTo ?? sessionLocationId;
-        await tx.item.update({
-          where: { id: plan.itemId },
-          data: { locationId: target, lastAuditedAt: now },
-        });
-        webhookIds.push(plan.itemId);
-        moveCheckIds.push(plan.checkId);
-      }
-
-      if (movements.length > 0) {
-        await tx.stockMovement.createMany({ data: movements });
-      }
-      if (zeroCheckIds.length > 0) {
-        await tx.auditCheck.updateMany({
-          where: { id: { in: zeroCheckIds } },
-          data: { status: "FOUND", actualQuantity: 0, checkedAt: now },
-        });
-      }
-      if (moveCheckIds.length > 0) {
-        // actualQuantity는 아이템마다 달라 일괄값으로 못 넣는다 — 루프 한 번으로 상태+수량을 기록.
         for (const plan of planned.plans) {
-          if (plan.action !== "MOVE") continue;
+          if (plan.action === "LEAVE") continue;
+
+          // 세션 중 휴지통으로 간 아이템은 건드리지 않는다 — ZERO가 되살리면 의미가 반대다.
+          // 체크만 FOUND로 올려 세션을 닫을 수 있게 한다.
+          if (plan.deletedAt) {
+            if (plan.action === "ZERO") zeroCheckIds.push(plan.checkId);
+            else movePlans.push(plan);
+            continue;
+          }
+
+          if (plan.action === "ZERO") {
+            if (plan.quantity === 0) zeroAlreadyZeroIds.push(plan.itemId);
+            else {
+              zeroWithQtyIds.push(plan.itemId);
+              movements.push({
+                itemId: plan.itemId,
+                delta: -plan.quantity,
+                reason: "ADJUST",
+                userId,
+              });
+            }
+            webhookIds.push(plan.itemId);
+            zeroCheckIds.push(plan.checkId);
+            continue;
+          }
+
+          const target = plan.moveTo ?? sessionLocationId;
+          const list = moveByTarget.get(target);
+          if (list) list.push(plan.itemId);
+          else moveByTarget.set(target, [plan.itemId]);
+          webhookIds.push(plan.itemId);
+          movePlans.push(plan);
+        }
+
+        if (zeroWithQtyIds.length > 0) {
+          await tx.item.updateMany({
+            where: { id: { in: zeroWithQtyIds } },
+            data: { quantity: 0, lastAuditedAt: now },
+          });
+        }
+        if (zeroAlreadyZeroIds.length > 0) {
+          await tx.item.updateMany({
+            where: { id: { in: zeroAlreadyZeroIds } },
+            data: { lastAuditedAt: now },
+          });
+        }
+        for (const [target, itemIds] of moveByTarget) {
+          await tx.item.updateMany({
+            where: { id: { in: itemIds } },
+            data: { locationId: target, lastAuditedAt: now },
+          });
+        }
+
+        if (movements.length > 0) {
+          await tx.stockMovement.createMany({ data: movements });
+        }
+        if (zeroCheckIds.length > 0) {
+          await tx.auditCheck.updateMany({
+            where: { id: { in: zeroCheckIds } },
+            data: { status: "FOUND", actualQuantity: 0, checkedAt: now },
+          });
+        }
+        // MOVE 체크의 actualQuantity는 아이템마다 달라 일괄값이 안 된다 — 건수만 남는다.
+        for (const plan of movePlans) {
           await tx.auditCheck.update({
             where: { id: plan.checkId },
             data: {
@@ -485,26 +500,30 @@ export async function auditRoutes(app: FastifyInstance) {
             },
           });
         }
-      }
 
-      const completedSession = await tx.auditSession.update({
-        where: { id: session.id },
-        data: { status: "COMPLETED", completedAt: now },
-        include: sessionInclude(),
-      });
+        const completedSession = await tx.auditSession.update({
+          where: { id: session.id },
+          data: { status: "COMPLETED", completedAt: now },
+          include: sessionInclude(),
+        });
 
-      return { completed: completedSession, webhookItemIds: webhookIds };
-    });
+        return { completed: completedSession, webhookItemIds: webhookIds };
+      },
+      { timeout: 30_000 },
+    );
 
     // 트랜잭션 밖 — 실패해도 재고는 이미 맞음. 라벨(전자잉크)이 낡은 수량을 붙잡지 않게.
+    // finish는 한 번에 많이 나가므로 순차 발송(백그라운드). 동시 100발은 수신 자동화를 짓누른다.
     if (webhookItemIds.length > 0) {
       const items = await prisma.item.findMany({
         where: { id: { in: webhookItemIds } },
         include: ITEM_INCLUDE,
       });
-      for (const item of items) {
-        void fireInventoryWebhook("item.updated", item);
-      }
+      void (async () => {
+        for (const item of items) {
+          await fireInventoryWebhook("item.updated", item);
+        }
+      })();
     }
 
     return withProgress(completed);
