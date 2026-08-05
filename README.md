@@ -98,7 +98,18 @@ A slide-up bottom sheet menu accessed via the bottom navigation bar. It is clean
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/eigger/stash/master/proxmox/ct/stash.sh)"
 ```
 
-The community-scripts-style installer creates a Debian 13 LXC with Docker, writes the deploy files and a `.env` with random secrets to `/opt/stash`, and starts the stack via a `stash.service` systemd unit. Open `http://<LXC_IP>` when finished. Update later with `update` inside the container.
+The community-scripts-style installer creates a Debian 13 LXC with Docker, writes the deploy files and a `.env` with random secrets to `/opt/stash`, and starts the stack via a `stash.service` systemd unit. Open `http://<LXC_IP>` when finished.
+
+**Updates (`update`)** — run inside the container. It fetches `docker-compose.prod.yml` / `Caddyfile` / `/usr/bin/update` itself from the latest **release tag**, pulls images, and checks `/health`. On failure it rolls deploy files back to the backup. `.env` secrets are never overwritten (missing keys may be appended as comments).
+
+- If you edited compose locally: the default is to abort. Overwrite with `update --force`
+- To fetch from a specific git ref: `STASH_REF=master update` (images remain `:latest`)
+- **One-time bootstrap for existing installs** (old `update` that only pulled images) — required once or deploy-file sync never runs:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eigger/stash/master/proxmox/install/update.sh -o /usr/bin/update && chmod +x /usr/bin/update
+update
+```
 
 **Docker Compose**
 
@@ -189,7 +200,7 @@ Useful scripts: `npm run build`, `npm run test`, `npm run prisma:generate`.
 - Stack: PostgreSQL 16 + API + Web + Caddy (`:80`)
 - API runs `prisma migrate deploy` on startup (prod compose)
 - Images: `ghcr.io/<owner>/stash-api` / `stash-web` (`latest` + semver tags)
-- Update LXC: `update` in the container (pulls compose images)
+- Update LXC: `update` in the container (syncs compose/Caddyfile from the latest release tag, pulls images, health-checks)
 - External barcode lookup (Open Food Facts, UPCItemDB) is optional — manual entry and self-issued QR codes work standalone
 - `APP_PUBLIC_URL` controls the deep-link encoded into self-issued QR labels; set it to your real domain so labels open the app from any camera app
 

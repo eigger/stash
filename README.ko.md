@@ -98,7 +98,18 @@
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/eigger/stash/master/proxmox/ct/stash.sh)"
 ```
 
-community-scripts 스타일 설치 마법사가 Docker가 포함된 Debian 13 LXC를 만들고, 배포 파일과 랜덤 시크릿이 든 `.env`를 `/opt/stash`에 쓴 뒤 `stash.service` systemd 유닛으로 스택을 기동합니다. 완료 후 `http://<LXC_IP>`로 접속하세요. 이후 업데이트는 컨테이너 안에서 `update`로 합니다.
+community-scripts 스타일 설치 마법사가 Docker가 포함된 Debian 13 LXC를 만들고, 배포 파일과 랜덤 시크릿이 든 `.env`를 `/opt/stash`에 쓴 뒤 `stash.service` systemd 유닛으로 스택을 기동합니다. 완료 후 `http://<LXC_IP>`로 접속하세요.
+
+**업데이트 (`update`)** — 컨테이너 안에서 실행합니다. 최신 **릴리스 태그**에서 `docker-compose.prod.yml` / `Caddyfile` / `/usr/bin/update` 자신을 받은 뒤 이미지를 pull하고, `/health`가 살아 있는지 확인합니다. 실패하면 배포 파일을 백업본으로 되돌립니다. `.env` 시크릿은 덮어쓰지 않습니다(없는 키만 주석으로 가산).
+
+- 로컬에서 compose를 고쳐 둔 경우: 기본은 중단됩니다. 덮어쓰려면 `update --force`
+- 특정 git ref에서 받으려면: `STASH_REF=master update` (이미지는 여전히 `:latest`)
+- **기존 설치본(옛 `update`만 있는 경우) 1회 부트스트랩** — 이걸 한 뒤에야 배포 파일 갱신이 동작합니다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eigger/stash/master/proxmox/install/update.sh -o /usr/bin/update && chmod +x /usr/bin/update
+update
+```
 
 **Docker Compose**
 
@@ -189,7 +200,7 @@ npm run dev:web            # :3000
 - 스택: PostgreSQL 16 + API + Web + Caddy (`:80`)
 - API는 시작 시 `prisma migrate deploy` 실행(프로덕션 compose)
 - 이미지: `ghcr.io/<owner>/stash-api` / `stash-web` (`latest` + semver 태그)
-- LXC 업데이트: 컨테이너 안에서 `update` (compose 이미지 pull)
+- LXC 업데이트: 컨테이너 안에서 `update` (릴리스 태그에서 compose/Caddyfile 동기화 + 이미지 pull + 헬스 확인)
 - 외부 바코드 조회(Open Food Facts, UPCItemDB)는 선택 — 수동 입력과 자체 발급 QR만으로도 전체 동작
 - `APP_PUBLIC_URL`은 자체 발급 QR 라벨에 인코딩되는 딥링크를 결정합니다. 실제 도메인으로 설정해야 아무 카메라 앱으로 스캔해도 앱이 열립니다
 

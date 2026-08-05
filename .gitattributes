@@ -1,0 +1,3 @@
+# Shell / unit files must stay LF — CRLF breaks bash/shebang on Linux LXC.
+*.sh text eol=lf
+proxmox/install/** text eol=lf

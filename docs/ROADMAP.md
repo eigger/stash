@@ -115,3 +115,9 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **API:** `GET /api/insights?from=&to=` (max ~3 months). Soft-deleted items excluded; ADJUST never counts as consume/purchase.
 - **UI:** `/insights` (month pager) + dashboard link + More menu. Copy is factual only — no “waste” sermons. Unit-price total is labeled distinctly from dashboard inventory value (`price × quantity`). `purchaseDate` still has no form field; totals fall back to registration date (documented in the hint).
 - **Out of scope:** judgmental copy, XP shop, purchaseDate form (separate if needed).
+
+## Deploy drift / LXC `update` (post–Phase 3)
+
+**Incident (v0.7.x):** production api crash-looped with `The datasource.url property is required…` after `update`. Prisma 7 needs `migrate deploy --config apps/api/prisma.config.ts`. The LXC’s `/opt/stash/docker-compose.prod.yml` was still an old install-time heredoc **without** `--config`. `update` only ran `compose pull && up -d`, so repo fixes never reached existing hosts. Repro: `--schema` alone → same log; `--config` present → `Loaded Prisma config…`.
+
+**Fix:** single-source deploy files in the repo (`docker-compose.prod.yml`, `Caddyfile`, `proxmox/install/update.sh`). Installer and `update` **curl from the latest GitHub release tag** (same cadence as `:latest` images). `STASH_REF` overrides the ref for testing; GitHub API failure aborts (no silent `master` fallback — that would pair unreleased compose with released images). `update` backups + diffs, refuses local edits unless `--force`, validates compose, then health-checks `/health` and rolls deploy files back on failure. Self-refresh of `/usr/bin/update` applies on the **next** run (easier to debug than mid-exec replace). Existing hosts need a one-time bootstrap curl (see README).
