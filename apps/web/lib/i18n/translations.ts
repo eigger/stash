@@ -612,6 +612,10 @@ const dict = {
     ko: "진행 중인 재점검이 있습니다: {name}",
     en: "An audit is already in progress: {name}",
   },
+  auditActiveByHint: {
+    ko: "{who}님이 시작한 재점검입니다: {name}",
+    en: "{who} started an audit: {name}",
+  },
   auditProgress: {
     ko: "{found} / {total} 확인 · 남은 {pending}",
     en: "{found} / {total} checked · {pending} left",

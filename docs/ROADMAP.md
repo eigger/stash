@@ -86,9 +86,10 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 
 - **Why first:** without a way to correct a whole shelf in minutes, freshness (B) only shows guilt. Game-wise it's a session with clear start/end/progress.
 - **Model:** `AuditSession` + `AuditCheck` (PENDING/FOUND/UNEXPECTED). One ACTIVE session per household; persisted so closing the app doesn't corrupt confirmed fixes. **Not** in backup/restore — ephemeral work state; items/locations already are.
-- **API:** `POST/GET /api/audit/sessions`, `…/scan`, `…/confirm`, `…/register`, `…/finish`, `…/cancel`. Scan confirms presence (does not +/- stock). Quantity fixes use `StockMovement` `ADJUST`. Finish asks what to do with unscanned rows (`ZERO` / `MOVE` / `LEAVE`) — **never auto-delete**.
-- **UI:** `/audit` + `/audit/[sessionId]`; reuses `createScanHints()` / scanner chrome from `/scan`. Online-only for v1 (session is stateful; offline queue has no location/mode metadata).
+- **API:** `POST/GET /api/audit/sessions`, `…/scan`, `…/confirm`, `…/register`, `…/finish`, `…/cancel`. Scan confirms presence (does not +/- stock). Quantity fixes use `StockMovement` `ADJUST`. Finish asks what to do with unscanned rows (`ZERO` / `MOVE` / `LEAVE`) — **never auto-delete**. Finish runs in **one `$transaction`** after a pre-flight plan (`buildFinishPlans` + zod `superRefine`) so a bad MOVE exception cannot leave half the shelf zeroed. Soft-deleted items are not resurrected on finish/confirm (unlike `/scan`, which intentionally undeletes).
+- **UI:** `/audit` + `/audit/[sessionId]`; reuses `createScanHints()` / scanner chrome from `/scan`. Online-only for v1 (session is stateful; offline queue has no location/mode metadata). Active session payload includes `startedBy` so a 409/resume card can show who started it (still household-wide co-op — anyone may finish).
 - **`lastAuditedAt`:** already updated on `/scan`; now also when `PATCH`/`POST …/quantity` actually changes quantity (manual confirm counts as an audit).
+- **Webhooks:** finish fires `item.updated` for ZERO/MOVE results (shelf labels must not keep stale qty). Confirm still fires per item — audit sessions are a bulk path, so a long run can burst N deliveries (each up to 3 retries); receivers should tolerate that until/unless we add a batched event.
 - **Anti-patterns deferred:** streaks, leaderboards, badges/levels, lossy push nags — see workorder §2.2–2.3 (“useful with game stripped off”).
 
 **Next:** B freshness ratios (CONSUMABLE vs ASSET thresholds), then stop for field validation before C/D.

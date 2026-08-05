@@ -137,6 +137,7 @@ export interface AuditSession {
   startedAt: string;
   completedAt: string | null;
   location: Location;
+  startedBy: { id: string; name: string } | null;
   checks: AuditCheck[];
   progress: AuditProgress;
 }

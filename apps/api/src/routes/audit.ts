@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Prisma } from "@prisma/client";
 import {
   auditConfirmSchema,
   auditFinishSchema,
@@ -27,6 +28,8 @@ const CHECK_INCLUDE = {
 function sessionInclude() {
   return {
     location: true,
+    // 409/이어하기 때 "누가 돌리고 있는지"를 보여주기 위해 — 권한 게이트는 아니다.
+    startedBy: { select: { id: true, name: true } },
     checks: {
       include: CHECK_INCLUDE,
       orderBy: [{ status: "asc" as const }, { item: { name: "asc" as const } }],
@@ -57,79 +60,83 @@ async function requireActiveSession(id: string) {
   return { session };
 }
 
-async function applyQuantityAdjust(opts: {
-  itemId: string;
-  from: number;
-  to: number;
-  userId: string;
-  locationId?: string | null;
-  alsoAudited?: boolean;
-}) {
+type Tx = Prisma.TransactionClient;
+
+/** 재점검 경로 — 휴지통 아이템을 되살리지 않는다 (/scan의 deletedAt:null과 의도적으로 다름). */
+async function applyQuantityAdjust(
+  tx: Tx,
+  opts: {
+    itemId: string;
+    from: number;
+    to: number;
+    userId: string;
+    locationId?: string | null;
+    alsoAudited?: boolean;
+  },
+) {
   const { itemId, from, to, userId, locationId, alsoAudited = true } = opts;
   const delta = to - from;
   const data: {
     quantity: number;
     lastAuditedAt?: Date;
     locationId?: string | null;
-    deletedAt?: null;
-  } = {
-    quantity: to,
-    deletedAt: null,
-  };
+  } = { quantity: to };
   if (alsoAudited) data.lastAuditedAt = new Date();
   if (locationId !== undefined) data.locationId = locationId;
 
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.item.update({
-      where: { id: itemId },
-      data,
-      include: ITEM_INCLUDE,
-    });
-    // 수량 변화가 있을 때만 ADJUST — 위치만 옮긴 확인은 이력에 노이즈를 남기지 않는다.
-    if (delta !== 0) {
-      await tx.stockMovement.create({
-        data: { itemId, delta, reason: "ADJUST", userId },
-      });
-    }
-    return updated;
+  const updated = await tx.item.update({
+    where: { id: itemId },
+    data,
+    include: ITEM_INCLUDE,
   });
+  // 수량 변화가 있을 때만 ADJUST — 위치만 옮긴 확인은 이력에 노이즈를 남기지 않는다.
+  if (delta !== 0) {
+    await tx.stockMovement.create({
+      data: { itemId, delta, reason: "ADJUST", userId },
+    });
+  }
+  return updated;
 }
 
-async function applyUnscannedAction(opts: {
+type FinishPlan = {
+  checkId: string;
   itemId: string;
-  currentQuantity: number;
   action: AuditUnscannedAction;
-  moveToLocationId: string | undefined;
-  sessionLocationId: string;
-  userId: string;
-}) {
-  const { itemId, currentQuantity, action, moveToLocationId, sessionLocationId, userId } = opts;
-  if (action === "LEAVE") return;
+  moveTo: string | undefined;
+  quantity: number;
+  deletedAt: Date | null;
+};
 
-  if (action === "ZERO") {
-    if (currentQuantity === 0) {
-      // 수량은 이미 0이어도 "없어진 것으로 확인"한 것이므로 감사 시각만 찍는다.
-      await prisma.item.update({
-        where: { id: itemId },
-        data: { lastAuditedAt: new Date() },
-      });
-      return;
+/** MOVE 타깃 누락을 루프 들어가기 전에 전부 걸러 부분 적용을 막는다. */
+export function buildFinishPlans(
+  pending: {
+    id: string;
+    itemId: string;
+    item: { quantity: number; deletedAt: Date | null };
+  }[],
+  defaultAction: AuditUnscannedAction,
+  defaultMoveTo: string | undefined,
+  exceptions: { itemId: string; action: AuditUnscannedAction; moveToLocationId?: string }[],
+): { ok: true; plans: FinishPlan[] } | { ok: false; reason: "move_target_required" } {
+  const exceptionMap = new Map(exceptions.map((e) => [e.itemId, e]));
+  const plans: FinishPlan[] = [];
+  for (const check of pending) {
+    const ex = exceptionMap.get(check.itemId);
+    const action = ex?.action ?? defaultAction;
+    const moveTo = ex?.moveToLocationId ?? defaultMoveTo;
+    if (action === "MOVE" && !moveTo) {
+      return { ok: false, reason: "move_target_required" };
     }
-    await applyQuantityAdjust({
-      itemId,
-      from: currentQuantity,
-      to: 0,
-      userId,
+    plans.push({
+      checkId: check.id,
+      itemId: check.itemId,
+      action,
+      moveTo,
+      quantity: check.item.quantity,
+      deletedAt: check.item.deletedAt,
     });
-    return;
   }
-
-  // MOVE
-  const target = moveToLocationId ?? sessionLocationId;
-  await prisma.item.update({
-    where: { id: itemId },
-    data: { locationId: target, lastAuditedAt: new Date() },
-  });
+  return { ok: true, plans };
 }
 
 export async function auditRoutes(app: FastifyInstance) {
@@ -268,31 +275,34 @@ export async function auditRoutes(app: FastifyInstance) {
     const nextStatus = existing && existing.status !== "UNEXPECTED" ? "FOUND" : "UNEXPECTED";
     const moveLocationId = parsed.data.moveHere ? session.locationId : undefined;
 
-    const updatedItem = await applyQuantityAdjust({
-      itemId: item.id,
-      from: item.quantity,
-      to: actualQuantity,
-      userId: request.user.sub,
-      locationId: moveLocationId,
-    });
-
-    await prisma.auditCheck.upsert({
-      where: { sessionId_itemId: { sessionId: session.id, itemId: item.id } },
-      create: {
-        sessionId: session.id,
+    const { updatedItem } = await prisma.$transaction(async (tx) => {
+      const updated = await applyQuantityAdjust(tx, {
         itemId: item.id,
-        expectedQuantity: existing?.expectedQuantity ?? item.quantity,
-        actualQuantity,
-        status: nextStatus,
-        checkedAt: new Date(),
-      },
-      update: {
-        actualQuantity,
-        status: nextStatus,
-        checkedAt: new Date(),
-      },
+        from: item.quantity,
+        to: actualQuantity,
+        userId: request.user.sub,
+        locationId: moveLocationId,
+      });
+      await tx.auditCheck.upsert({
+        where: { sessionId_itemId: { sessionId: session.id, itemId: item.id } },
+        create: {
+          sessionId: session.id,
+          itemId: item.id,
+          expectedQuantity: existing?.expectedQuantity ?? item.quantity,
+          actualQuantity,
+          status: nextStatus,
+          checkedAt: new Date(),
+        },
+        update: {
+          actualQuantity,
+          status: nextStatus,
+          checkedAt: new Date(),
+        },
+      });
+      return { updatedItem: updated };
     });
 
+    // confirm마다 웹훅 1회 — 재점검은 벌크라 수신 자동화 부하가 커질 수 있음(ROADMAP).
     void fireInventoryWebhook("item.updated", updatedItem);
 
     const refreshed = await prisma.auditSession.findUniqueOrThrow({
@@ -387,49 +397,115 @@ export async function auditRoutes(app: FastifyInstance) {
     }
     const { session } = loaded;
 
-    if (parsed.data.defaultAction === "MOVE" && !parsed.data.moveToLocationId) {
+    const pending = session.checks.filter((c) => c.status === "PENDING");
+    const planned = buildFinishPlans(
+      pending,
+      parsed.data.defaultAction,
+      parsed.data.moveToLocationId,
+      parsed.data.exceptions,
+    );
+    if (!planned.ok) {
       return reply.code(400).send({ error: t("auditMoveTargetRequired", request.locale) });
     }
 
-    const exceptionMap = new Map(parsed.data.exceptions.map((e) => [e.itemId, e]));
-    const pending = session.checks.filter((c) => c.status === "PENDING");
+    const now = new Date();
+    const userId = request.user.sub;
+    const sessionLocationId = session.locationId;
 
-    for (const check of pending) {
-      const ex = exceptionMap.get(check.itemId);
-      const action = ex?.action ?? parsed.data.defaultAction;
-      const moveTo = ex?.moveToLocationId ?? parsed.data.moveToLocationId;
-      if (action === "MOVE" && !moveTo) {
-        return reply.code(400).send({ error: t("auditMoveTargetRequired", request.locale) });
+    // 한 트랜잭션 — 검증 실패·중간 오류 시 재고가 반만 바뀌지 않게. 체크 갱신은 액션별 updateMany.
+    const { completed, webhookItemIds } = await prisma.$transaction(async (tx) => {
+      const webhookIds: string[] = [];
+      const zeroCheckIds: string[] = [];
+      const moveCheckIds: string[] = [];
+      const movements: { itemId: string; delta: number; reason: "ADJUST"; userId: string }[] = [];
+
+      for (const plan of planned.plans) {
+        if (plan.action === "LEAVE") continue;
+
+        // 세션 중 휴지통으로 간 아이템은 건드리지 않는다 — ZERO가 되살리면 의미가 반대다.
+        // 체크만 FOUND로 올려 세션을 닫을 수 있게 한다.
+        if (plan.deletedAt) {
+          if (plan.action === "ZERO") zeroCheckIds.push(plan.checkId);
+          else moveCheckIds.push(plan.checkId);
+          continue;
+        }
+
+        if (plan.action === "ZERO") {
+          if (plan.quantity === 0) {
+            await tx.item.update({
+              where: { id: plan.itemId },
+              data: { lastAuditedAt: now },
+            });
+          } else {
+            await tx.item.update({
+              where: { id: plan.itemId },
+              data: { quantity: 0, lastAuditedAt: now },
+            });
+            movements.push({
+              itemId: plan.itemId,
+              delta: -plan.quantity,
+              reason: "ADJUST",
+              userId,
+            });
+          }
+          webhookIds.push(plan.itemId);
+          zeroCheckIds.push(plan.checkId);
+          continue;
+        }
+
+        // MOVE
+        const target = plan.moveTo ?? sessionLocationId;
+        await tx.item.update({
+          where: { id: plan.itemId },
+          data: { locationId: target, lastAuditedAt: now },
+        });
+        webhookIds.push(plan.itemId);
+        moveCheckIds.push(plan.checkId);
       }
-      await applyUnscannedAction({
-        itemId: check.itemId,
-        currentQuantity: check.item.quantity,
-        action,
-        moveToLocationId: moveTo,
-        sessionLocationId: session.locationId,
-        userId: request.user.sub,
-      });
-      // LEAVE는 확인하지 않은 것이므로 체크 상태를 바꾸지 않는다.
-      // ZERO/MOVE는 사용자가 처리 방향을 정한 것이므로 FOUND로 올려 세션을 닫는다.
-      if (action !== "LEAVE") {
-        await prisma.auditCheck.update({
-          where: { id: check.id },
-          data: {
-            status: "FOUND",
-            actualQuantity: action === "ZERO" ? 0 : check.item.quantity,
-            checkedAt: new Date(),
-          },
+
+      if (movements.length > 0) {
+        await tx.stockMovement.createMany({ data: movements });
+      }
+      if (zeroCheckIds.length > 0) {
+        await tx.auditCheck.updateMany({
+          where: { id: { in: zeroCheckIds } },
+          data: { status: "FOUND", actualQuantity: 0, checkedAt: now },
         });
       }
-    }
+      if (moveCheckIds.length > 0) {
+        // actualQuantity는 아이템마다 달라 일괄값으로 못 넣는다 — 루프 한 번으로 상태+수량을 기록.
+        for (const plan of planned.plans) {
+          if (plan.action !== "MOVE") continue;
+          await tx.auditCheck.update({
+            where: { id: plan.checkId },
+            data: {
+              status: "FOUND",
+              actualQuantity: plan.deletedAt ? undefined : plan.quantity,
+              checkedAt: now,
+            },
+          });
+        }
+      }
 
-    // 이미 FOUND인 아이템의 lastAuditedAt은 confirm 때 찍혔다.
-    // 세션을 닫는다.
-    const completed = await prisma.auditSession.update({
-      where: { id: session.id },
-      data: { status: "COMPLETED", completedAt: new Date() },
-      include: sessionInclude(),
+      const completedSession = await tx.auditSession.update({
+        where: { id: session.id },
+        data: { status: "COMPLETED", completedAt: now },
+        include: sessionInclude(),
+      });
+
+      return { completed: completedSession, webhookItemIds: webhookIds };
     });
+
+    // 트랜잭션 밖 — 실패해도 재고는 이미 맞음. 라벨(전자잉크)이 낡은 수량을 붙잡지 않게.
+    if (webhookItemIds.length > 0) {
+      const items = await prisma.item.findMany({
+        where: { id: { in: webhookItemIds } },
+        include: ITEM_INCLUDE,
+      });
+      for (const item of items) {
+        void fireInventoryWebhook("item.updated", item);
+      }
+    }
 
     return withProgress(completed);
   });

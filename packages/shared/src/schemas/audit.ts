@@ -26,19 +26,40 @@ export const auditRegisterSchema = z.object({
 
 const auditUnscannedActionSchema = z.enum(["ZERO", "MOVE", "LEAVE"]);
 
-export const auditFinishSchema = z.object({
-  // 안 찍힌(PENDING) 아이템에 일괄 적용. 자동 삭제는 절대 없다.
-  defaultAction: auditUnscannedActionSchema,
-  moveToLocationId: z.string().min(1).optional(),
-  exceptions: z
-    .array(
-      z.object({
-        itemId: z.string().min(1),
-        action: auditUnscannedActionSchema,
-        moveToLocationId: z.string().min(1).optional(),
-      }),
-    )
-    .default([]),
-});
+export const auditFinishSchema = z
+  .object({
+    // 안 찍힌(PENDING) 아이템에 일괄 적용. 자동 삭제는 절대 없다.
+    defaultAction: auditUnscannedActionSchema,
+    moveToLocationId: z.string().min(1).optional(),
+    exceptions: z
+      .array(
+        z.object({
+          itemId: z.string().min(1),
+          action: auditUnscannedActionSchema,
+          moveToLocationId: z.string().min(1).optional(),
+        }),
+      )
+      .default([]),
+  })
+  .superRefine((data, ctx) => {
+    // 루프 도중 400이 나면 앞선 ZERO가 이미 커밋되는 사고를 스키마 단계에서도 막는다.
+    // (핸들러는 buildFinishPlans로 한 번 더 검증한 뒤 단일 트랜잭션으로 적용한다.)
+    if (data.defaultAction === "MOVE" && !data.moveToLocationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "moveToLocationId is required when action is MOVE",
+        path: ["moveToLocationId"],
+      });
+    }
+    data.exceptions.forEach((ex, i) => {
+      if (ex.action === "MOVE" && !(ex.moveToLocationId ?? data.moveToLocationId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "moveToLocationId is required when action is MOVE",
+          path: ["exceptions", i, "moveToLocationId"],
+        });
+      }
+    });
+  });
 
 export type AuditUnscannedAction = z.infer<typeof auditUnscannedActionSchema>;

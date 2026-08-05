@@ -86,7 +86,11 @@ export default function AuditStartPage() {
 
       {active && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <p style={{ marginTop: 0 }}>{t("auditActiveHint", { name: active.location.name })}</p>
+          <p style={{ marginTop: 0 }}>
+            {active.startedBy?.name
+              ? t("auditActiveByHint", { who: active.startedBy.name, name: active.location.name })
+              : t("auditActiveHint", { name: active.location.name })}
+          </p>
           <p className="meta">
             {t("auditProgress", {
               found: active.progress.foundExpected,
