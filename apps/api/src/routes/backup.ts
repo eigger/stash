@@ -113,7 +113,9 @@ export async function backupRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: "unauthorized" });
     }
     // 검증 직후 소비 — 빌드 실패해도 같은 티켓으로 재시도하지 못하게 한다(재발급은 가능).
+    // 티켓 수명(60s)이 지나면 재사용 불가이므로 Set에서도 지워 누적을 막는다.
     usedBackupTicketJtis.add(jti);
+    setTimeout(() => usedBackupTicketJtis.delete(jti), 60_000);
 
     const tempDirName = `backup_${Date.now()}`;
     let tempDir = "";

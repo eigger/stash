@@ -64,6 +64,8 @@ export default function SettingsPage() {
       // (location.href는 same-origin일 때 lint에 걸린다).
       const a = document.createElement("a");
       a.href = `${API_URL}/api/backup/export?ticket=${encodeURIComponent(ticket)}`;
+      a.target = "_blank";
+      a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       a.remove();

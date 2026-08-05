@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { IScannerControls } from "@zxing/browser";
-import type { BarcodeFormat } from "@zxing/library";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
 import { photoUrlFromFilePath, photoUrlMatches, resolvePhotoUrl } from "../../../lib/media";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
 import { playBeep, unlockBeepAudio } from "../../../lib/beep";
-import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat, isQrScanFormat } from "../../../lib/barcodeScanner";
+import { SCAN_VIDEO_CONSTRAINTS, symbologyFromScanFormat, isQrScanFormat, createScanHints } from "../../../lib/barcodeScanner";
 import { TorchButton } from "../../../components/TorchButton";
 import type { TranslationKey } from "../../../lib/i18n/translations";
 import type { Item, ItemCondition, Location, Category, MaintenanceRecord, StockMovementReason } from "../../../lib/types";
+
+/** @zxing/browser IScannerControls — 타입만 필요해서 패키지를 정적 import하지 않는다. */
+type ScannerControls = { stop: () => void; switchTorch?: (on: boolean) => Promise<void> };
 
 const REASON_KEY: Record<StockMovementReason, TranslationKey> = {
   RESTOCK: "reasonRestock",
@@ -59,14 +60,14 @@ export default function ItemDetailPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [busy, setBusy] = useState(true);
   const [manualBarcode, setManualBarcode] = useState("");
-  const [scannedFormat, setScannedFormat] = useState<BarcodeFormat | null>(null);
+  const [scannedFormat, setScannedFormat] = useState<number | null>(null);
   const [showAddBarcode, setShowAddBarcode] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
+  const controlsRef = useRef<ScannerControls | null>(null);
   const [maintDate, setMaintDate] = useState("");
   const [maintDescription, setMaintDescription] = useState("");
   const [maintCost, setMaintCost] = useState("");
@@ -84,9 +85,12 @@ export default function ItemDetailPage() {
     let cancelled = false;
 
     void (async () => {
-      const { BrowserCodeReader, BrowserMultiFormatReader } = await import("@zxing/browser");
+      const [{ BrowserCodeReader, BrowserMultiFormatReader }, hints] = await Promise.all([
+        import("@zxing/browser"),
+        createScanHints(),
+      ]);
       if (cancelled || !videoRef.current) return;
-      const reader = new BrowserMultiFormatReader(SCAN_HINTS);
+      const reader = new BrowserMultiFormatReader(hints);
       try {
         const controls = await reader.decodeFromConstraints(
           { video: SCAN_VIDEO_CONSTRAINTS },

@@ -1,16 +1,13 @@
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import type { BarcodeSymbology } from "./types";
 
-// 이 앱이 실제로 다루는 값만으로 제한한다 — EAN/UPC(상품 바코드), CODE_128(서버의
-// guessSymbology가 기대하는 포맷), QR_CODE(자체 발급 QR·Matter 커미셔닝 QR). 기본값은
-// PDF417/Aztec/DataMatrix 등 쓰지도 않는 포맷까지 매 프레임 전부 시도하므로, 여기서
-// 줄이면 프레임당 처리 시간이 짧아져 체감 속도가 빨라지고 무관한 포맷의 오탐도 준다.
-export const SCAN_HINTS = new Map<DecodeHintType, unknown>([
-  [
-    DecodeHintType.POSSIBLE_FORMATS,
-    [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128, BarcodeFormat.QR_CODE],
-  ],
-]);
+// @zxing/library 값 import를 이 모듈 최상단에서 하지 않는다.
+// items/[id]·items/new가 힌트 Map을 정적 import하면 디코더 본체가 초기 그래프에 묶인다.
+// 숫자 상수는 @zxing/library BarcodeFormat enum 값과 동일하다.
+
+const FORMAT_EAN_13 = 7;
+const FORMAT_UPC_A = 14;
+const FORMAT_CODE_128 = 4;
+const FORMAT_QR_CODE = 11;
 
 // 해상도를 충분히 높게 요청하고 연속 오토포커스를 명시적으로 요청해 근거리의 작은
 // 바코드도 잘 잡히게 한다. focusMode를 지원하지 않는 기기/브라우저는 이 필드를
@@ -22,25 +19,46 @@ export const SCAN_VIDEO_CONSTRAINTS: MediaTrackConstraints = {
   advanced: [{ focusMode: "continuous" }] as unknown as MediaTrackConstraintSet[],
 };
 
+/**
+ * 스캐너 힌트 Map. @zxing/library를 동적 import한 뒤에만 호출한다.
+ * /scan은 페이지에서 zxing을 정적 import하므로 createScanHints()를 바로 await 하면 된다.
+ */
+export async function createScanHints(): Promise<Map<number, unknown>> {
+  const { BarcodeFormat, DecodeHintType } = await import("@zxing/library");
+  return new Map<number, unknown>([
+    [
+      DecodeHintType.POSSIBLE_FORMATS,
+      [
+        BarcodeFormat.EAN_13,
+        BarcodeFormat.EAN_8,
+        BarcodeFormat.UPC_A,
+        BarcodeFormat.UPC_E,
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.QR_CODE,
+      ],
+    ],
+  ]);
+}
+
 // 스캔 결과는 실제 포맷을 이미 알고 있으니, 서버의 guessSymbology(자릿수 추측)보다 이걸
 // 그대로 매핑하는 게 더 정확하다 — 수동 타이핑(포맷 정보 없음)일 때만 서버 추측에 맡긴다.
 // EAN_8/UPC_E는 별도 심볼로지가 없어(label 렌더링도 결국 code128로 폴백) OTHER로 둔다.
-export function symbologyFromScanFormat(format: BarcodeFormat): BarcodeSymbology {
+// 인자는 BarcodeFormat 숫자 — @zxing 값 import 없이 상세/등록 페이지에서 쓸 수 있게 한다.
+export function symbologyFromScanFormat(format: number): BarcodeSymbology {
   switch (format) {
-    case BarcodeFormat.EAN_13:
+    case FORMAT_EAN_13:
       return "EAN13";
-    case BarcodeFormat.UPC_A:
+    case FORMAT_UPC_A:
       return "UPCA";
-    case BarcodeFormat.CODE_128:
+    case FORMAT_CODE_128:
       return "CODE128";
-    case BarcodeFormat.QR_CODE:
+    case FORMAT_QR_CODE:
       return "QR";
     default:
       return "OTHER";
   }
 }
 
-/** 상세/등록 폼이 zxing 값을 정적 import하지 않도록 QR 판정을 여기로 모은다. */
-export function isQrScanFormat(format: BarcodeFormat): boolean {
-  return format === BarcodeFormat.QR_CODE;
+export function isQrScanFormat(format: number): boolean {
+  return format === FORMAT_QR_CODE;
 }

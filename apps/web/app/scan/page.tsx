@@ -9,7 +9,7 @@ import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import { enqueueScan, getScanQueue, removeFromScanQueue } from "../../lib/scanQueue";
 import { playBeep, unlockBeepAudio } from "../../lib/beep";
-import { SCAN_HINTS, SCAN_VIDEO_CONSTRAINTS } from "../../lib/barcodeScanner";
+import { createScanHints, SCAN_VIDEO_CONSTRAINTS } from "../../lib/barcodeScanner";
 import { TorchButton } from "../../components/TorchButton";
 import type { Item, Location, ScanResult } from "../../lib/types";
 
@@ -115,24 +115,34 @@ export default function ScanPage() {
 
   useEffect(() => {
     if (!user || !videoRef.current) return;
-    const reader = new BrowserMultiFormatReader(SCAN_HINTS);
     let cancelled = false;
 
-    reader
-      .decodeFromConstraints({ video: SCAN_VIDEO_CONSTRAINTS }, videoRef.current, (result) => {
-        if (cancelled || !result) return;
-        handleDetected(result.getText());
-      })
-      .then((controls) => {
+    void (async () => {
+      const hints = await createScanHints();
+      if (cancelled || !videoRef.current) return;
+      const reader = new BrowserMultiFormatReader(hints);
+      try {
+        const controls = await reader.decodeFromConstraints(
+          { video: SCAN_VIDEO_CONSTRAINTS },
+          videoRef.current,
+          (result) => {
+            if (cancelled || !result) return;
+            handleDetected(result.getText());
+          },
+        );
+        if (cancelled) {
+          controls.stop();
+          return;
+        }
         controlsRef.current = controls;
         const stream = videoRef.current?.srcObject;
         if (stream instanceof MediaStream) {
           setTorchSupported(BrowserCodeReader.mediaStreamIsTorchCompatible(stream));
         }
-      })
-      .catch(() => {
-        setCameraError(t("cameraError"));
-      });
+      } catch {
+        if (!cancelled) setCameraError(t("cameraError"));
+      }
+    })();
 
     return () => {
       cancelled = true;
