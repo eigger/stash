@@ -11,6 +11,8 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { CurrencyToggle } from "../../components/CurrencyToggle";
 import { downloadBlob, todayStamp } from "../../lib/download";
+import { OneTimeSecrets, type OneTimeSecret } from "../../components/OneTimeSecrets";
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading, isAdmin, logout } = useAuth();
@@ -22,6 +24,7 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [recoverySecrets, setRecoverySecrets] = useState<OneTimeSecret[] | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -81,10 +84,12 @@ export default function SettingsPage() {
         | { email: string; role?: string; temporaryPassword: string }[]
         | undefined;
       if (recoveries?.length) {
-        const lines = recoveries
-          .map((r) => `${r.email}${r.role ? ` (${r.role})` : ""}: ${r.temporaryPassword}`)
-          .join("\n");
-        window.alert(t("restoreRecoveryAlert", { lines }));
+        setRecoverySecrets(
+          recoveries.map((r) => ({
+            label: `${r.email}${r.role ? ` (${r.role})` : ""}`,
+            value: r.temporaryPassword,
+          })),
+        );
       }
       show(t("restoreSuccessToast"), "success");
     } catch (err: any) {
@@ -166,6 +171,16 @@ export default function SettingsPage() {
             </label>
           </div>
         </div>
+      )}
+
+      {recoverySecrets && (
+        <OneTimeSecrets
+          title={t("restoreRecoveryTitle")}
+          hint={t("restoreRecoveryHint")}
+          secrets={recoverySecrets}
+          downloadFilename={`stash-restore-passwords_${todayStamp()}.txt`}
+          onClose={() => setRecoverySecrets(null)}
+        />
       )}
     </main>
   );

@@ -939,3 +939,76 @@ th {
   text-align: left;
   font-size: 0.9rem;
 }
+
+/* 1회성 비밀(임시 비밀번호) — alert 대신 복사·다운로드 가능한 모달 */
+.one-time-secrets-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--color-modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+.one-time-secrets-card {
+  width: 100%;
+  max-width: 440px;
+  max-height: min(90vh, 640px);
+  overflow-y: auto;
+  margin: 0;
+}
+
+.one-time-secrets-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.one-time-secrets-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.one-time-secrets-value {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-size: 0.95rem;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+  outline: none;
+}
+
+.one-time-secrets-value:focus {
+  border-color: var(--color-accent, #2563eb);
+}
+
+.one-time-secrets-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.one-time-secrets-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.one-time-secrets-confirm input {
+  margin-top: 3px;
+}

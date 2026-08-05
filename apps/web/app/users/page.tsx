@@ -7,6 +7,7 @@ import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import type { User } from "../../lib/types";
+import { OneTimeSecrets, type OneTimeSecret } from "../../components/OneTimeSecrets";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function UsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"ADMIN" | "GENERAL">("GENERAL");
+  const [issuedSecrets, setIssuedSecrets] = useState<OneTimeSecret[] | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -60,6 +62,19 @@ export default function UsersPage() {
     }
   }
 
+  async function handleResetPassword(u: User) {
+    if (!confirm(t("confirmResetPassword", { name: u.name }))) return;
+    try {
+      const res = await apiJson<{ email: string; temporaryPassword: string }>(
+        `/api/auth/users/${u.id}/reset-password`,
+        { method: "POST" },
+      );
+      setIssuedSecrets([{ label: res.email, value: res.temporaryPassword }]);
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
   if (loading || !user || !isAdmin) return null;
 
   return (
@@ -88,12 +103,27 @@ export default function UsersPage() {
             {u.name} ({u.email}) <span className="badge badge-muted">{u.role === "ADMIN" ? t("roleAdmin") : t("roleGeneral")}</span>
           </div>
           {u.id !== user.id && (
-            <button className="secondary" onClick={() => handleDelete(u.id)}>
-              {t("delete")}
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="secondary" onClick={() => void handleResetPassword(u)}>
+                {t("resetPasswordButton")}
+              </button>
+              <button type="button" className="secondary" onClick={() => void handleDelete(u.id)}>
+                {t("delete")}
+              </button>
+            </div>
           )}
         </div>
       ))}
+
+      {issuedSecrets && (
+        <OneTimeSecrets
+          title={t("resetPasswordTitle")}
+          hint={t("resetPasswordHint")}
+          secrets={issuedSecrets}
+          downloadFilename={`stash-reset-password_${issuedSecrets[0]?.label ?? "user"}.txt`}
+          onClose={() => setIssuedSecrets(null)}
+        />
+      )}
     </main>
   );
 }

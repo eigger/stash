@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import {
   bootstrapAdminSchema,
@@ -123,6 +124,35 @@ export async function authRoutes(app: FastifyInstance) {
       }
       await prisma.user.delete({ where: { id } });
       return reply.code(204).send();
+    },
+  );
+
+  // 관리자가 타인의 비밀번호를 "재설정"할 수는 있지만 "알아낼" 수는 없다.
+  // 서버가 고른 임시값만 1회 응답하고, 기존 세션은 tokenVersion으로 끊는다.
+  app.post(
+    "/users/:id/reset-password",
+    { preHandler: [app.authenticate, app.requireAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      if (id === request.user.sub) {
+        return reply.code(400).send({ error: t("cannotResetOwnPassword", request.locale) });
+      }
+
+      const target = await prisma.user.findUnique({ where: { id } });
+      if (!target) return reply.code(404).send({ error: t("userNotFound", request.locale) });
+
+      // 복원 경로와 동일한 엔트로피 — 관리자가 고른 값이 아니므로 사칭·영구공유 여지가 줄어든다.
+      const temporaryPassword = randomBytes(12).toString("base64url");
+      const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+      await prisma.user.update({ where: { id }, data: { passwordHash } });
+      await bumpTokenVersion(id);
+
+      return {
+        id: target.id,
+        email: target.email,
+        name: target.name,
+        temporaryPassword,
+      };
     },
   );
 

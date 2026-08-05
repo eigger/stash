@@ -41,6 +41,10 @@ const MESSAGES = {
   },
   invalidCredentials: { ko: "이메일 또는 비밀번호가 올바르지 않습니다", en: "Invalid email or password" },
   cannotDeleteSelf: { ko: "본인 계정은 삭제할 수 없습니다", en: "You cannot delete your own account" },
+  cannotResetOwnPassword: {
+    ko: "본인 비밀번호는 설정 화면에서 변경하세요",
+    en: "Change your own password from Settings",
+  },
   currentPasswordRequired: { ko: "현재 비밀번호를 입력하세요", en: "Current password is required" },
   userNotFound: { ko: "사용자를 찾을 수 없습니다", en: "User not found" },
   incorrectCurrentPassword: { ko: "현재 비밀번호가 올바르지 않습니다", en: "Current password is incorrect" },

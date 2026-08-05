@@ -490,9 +490,44 @@ const dict = {
   },
   restoreFailFallback: { ko: "복원 실패", en: "Restore failed" },
   restoreSuccessToast: { ko: "복원이 완료되었습니다", en: "Restore complete" },
-  restoreRecoveryAlert: {
-    ko: "복원이 완료되었습니다.\n\n아래 임시 비밀번호로 로그인한 뒤 각자 비밀번호를 변경하세요.\n(이 화면을 닫으면 다시 볼 수 없습니다)\n\n{lines}",
-    en: "Restore complete.\n\nLog in with these one-time passwords, then each user should change theirs.\n(You won't see this again after closing)\n\n{lines}",
+  restoreRecoveryTitle: {
+    ko: "복원 임시 비밀번호",
+    en: "Restore one-time passwords",
+  },
+  restoreRecoveryHint: {
+    ko: "이 값은 서버에 다시 저장되지 않습니다. 복사하거나 파일로 받은 뒤, 각자 로그인해서 비밀번호를 바꾸세요. 닫으면 다시 볼 수 없습니다.",
+    en: "These values are not stored in plain text on the server. Copy or download them, then each person should sign in and change their password. You won't see them again after closing.",
+  },
+  resetPasswordButton: { ko: "비밀번호 재설정", en: "Reset password" },
+  confirmResetPassword: {
+    ko: "{name}의 비밀번호를 재설정할까요? 이 사용자의 모든 기기 세션이 즉시 끊기고, 임시 비밀번호는 이 화면에서만 한 번 표시됩니다.",
+    en: "Reset password for {name}? All of their device sessions will end immediately, and the temporary password is shown only once on this screen.",
+  },
+  resetPasswordTitle: {
+    ko: "임시 비밀번호 발급됨",
+    en: "Temporary password issued",
+  },
+  resetPasswordHint: {
+    ko: "이 값은 다시 볼 수 없습니다. 해당 사용자에게 전달한 뒤 본인이 설정에서 비밀번호를 바꾸게 하세요.",
+    en: "You won't see this again. Give it to the user and have them change it under Settings.",
+  },
+  oneTimeSecretCopyButton: { ko: "복사", en: "Copy" },
+  oneTimeSecretCopyAllButton: { ko: "전체 복사", en: "Copy all" },
+  oneTimeSecretDownloadButton: { ko: "파일로 저장", en: "Download file" },
+  oneTimeSecretSavedCheckbox: {
+    ko: "비밀번호를 안전한 곳에 저장했습니다",
+    en: "I have saved these passwords somewhere safe",
+  },
+  oneTimeSecretCloseButton: { ko: "닫기", en: "Close" },
+  oneTimeSecretCopiedToast: { ko: "클립보드에 복사했습니다", en: "Copied to clipboard" },
+  oneTimeSecretDownloadedToast: { ko: "파일을 저장했습니다", en: "File downloaded" },
+  oneTimeSecretCopyFallbackToast: {
+    ko: "자동 복사를 쓸 수 없습니다. 아래 값을 선택해서 복사하세요.",
+    en: "Clipboard isn't available. Select the value below and copy it manually.",
+  },
+  oneTimeSecretSelectHint: {
+    ko: "값을 길게 누르거나 드래그해 선택한 뒤 복사하세요.",
+    en: "Long-press or drag to select the value, then copy.",
   },
   passwordChangedReLoginToast: {
     ko: "비밀번호가 변경되었습니다. 다시 로그인해 주세요.",
