@@ -99,4 +99,4 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **UI:** dashboard trust card (“창고가 흐려졌다” tone, link to `/audit`); location tree dots + percent. No freshness push (v1). Expiry warnings stay on the existing system — not duplicated here.
 - **Pause:** live with A+B ≥3 weeks before C/D (workorder §5).
 
-**Next:** live with A+B ≥3 weeks (workorder §5 / tracking issue). Do **not** start quality XP (C) or retrospectives (D) until those questions are answered — especially “does stock drift again within a week after an audit?”
+**Next:** live with A+B ≥3 weeks ([#39](https://github.com/eigger/stash/issues/39)). Do **not** start quality XP (C) or retrospectives (D) until those questions are answered — especially “does stock drift again within a week after an audit?”
