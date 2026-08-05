@@ -36,7 +36,11 @@ export default function DashboardPage() {
   const [needsNaming, setNeedsNaming] = useState<Item[]>([]);
   const [recent, setRecent] = useState<Item[]>([]);
   const [stats, setStats] = useState<ItemStats | null>(null);
-  const [householdXp, setHouseholdXp] = useState<number | null>(null);
+  const [householdXp, setHouseholdXp] = useState<{
+    total: number;
+    quality: number;
+    confirm: number;
+  } | null>(null);
   const [busy, setBusy] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [onboardLocations, setOnboardLocations] = useState<Location[]>([]);
@@ -64,7 +68,11 @@ export default function DashboardPage() {
       apiJson<Location[]>("/api/locations").catch(() => []),
       getPushStatus().catch(() => ({ configured: false, subscribed: false, subscriptionCount: 0 })),
       settingsPromise,
-      apiJson<{ total: number }>("/api/xp").catch(() => ({ total: 0 })),
+      apiJson<{ total: number; quality: number; confirm: number }>("/api/xp").catch(() => ({
+        total: 0,
+        quality: 0,
+        confirm: 0,
+      })),
     ])
       .then(([low, expiring, unnamed, recentItems, itemStats, locs, push, settingsRows, xp]) => {
         setLowStock(low);
@@ -75,7 +83,7 @@ export default function DashboardPage() {
         setOnboardLocations(locs);
         setPushStatus(push);
         setAppUrlConfigured(Boolean(settingsRows.find((s) => s.key === "APP_PUBLIC_URL")?.hasValue));
-        setHouseholdXp(xp.total);
+        setHouseholdXp(xp);
       })
       // Promise.all에 catch가 없으면 하나라도 실패할 때 recent가 빈 배열로 남아,
       // 아이템이 실제로 있는 사용자에게 "아직 등록된 아이템이 없습니다" 온보딩 카드가
@@ -137,7 +145,10 @@ export default function DashboardPage() {
 
       {householdXp != null && (
         <p className="meta" style={{ marginTop: freshness && freshness.totalCount > 0 ? 0 : 8 }}>
-          <strong>{t("xpTitle")}</strong>: {t("xpTotalLabel", { n: householdXp })}
+          <strong>{t("xpTitle")}</strong>: {t("xpTotalLabel", { n: householdXp.total })}
+          <span style={{ marginLeft: 8 }}>
+            ({t("xpBreakdownLabel", { quality: householdXp.quality, confirm: householdXp.confirm })})
+          </span>
           <span style={{ marginLeft: 8 }}>{t("xpHint")}</span>
         </p>
       )}

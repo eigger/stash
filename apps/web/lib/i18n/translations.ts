@@ -100,9 +100,13 @@ const dict = {
   // Phase 3-C — 품질/확정 XP (표시만, 상점·레벨 없음)
   xpTitle: { ko: "가구 XP", en: "Household XP" },
   xpTotalLabel: { ko: "{n} XP", en: "{n} XP" },
+  xpBreakdownLabel: {
+    ko: "품질 {quality} · 확정 {confirm}",
+    en: "quality {quality} · confirmed {confirm}",
+  },
   xpHint: {
-    ko: "꼼꼼히 입력하고, 재점검으로 확인하면 쌓입니다. 순위나 상점은 없습니다.",
-    en: "Earn by filling useful fields and confirming them in an audit. No ranks or shop.",
+    ko: "품질은 지금 채워진 정보 합, 확정은 재점검으로 맞춘 기록입니다. 순위·상점은 없습니다.",
+    en: "Quality is derived from current fields; confirm XP grows when audits match. No ranks or shop.",
   },
   xpGainedDetailToast: { ko: "+{n} XP ({detail})", en: "+{n} XP ({detail})" },
   xpReasonLocation: { ko: "위치 +{n}", en: "location +{n}" },

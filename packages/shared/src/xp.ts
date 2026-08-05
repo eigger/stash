@@ -2,9 +2,10 @@
  * Phase 3-C 품질/확정 XP — 게임 요소를 걷어내도 "필드가 얼마나 채워졌나 /
  * 현장에서 맞았나"가 남는다. 상점·레벨·칭호는 넣지 않는다 (§2.3).
  *
- * 1층(품질): 입력 순간. 쓸모 있는 필드만 가중. 타입에 없는 필드(자산+유통기한 등)는
- * 분모·감점에 넣지 않는다.
- * 2층(확정): 재점검에서 사실로 확인될 때. 1층만 있으면 가짜 값으로 점수를 채운다.
+ * 1층(품질): **현재 상태의 파생 합계** (아이템별 충실도 합). 누적 가산이 아니라서
+ * 비웠다 채우기 farming이 구조적으로 불가능하고, 백업 복원 후에도 아이템만 있으면
+ * 같은 숫자가 다시 나온다. 점수는 행동이 아니라 상태를 반영한다.
+ * 2층(확정): 재점검에서 사실로 확인될 때만 **누적** 가산. 1층의 Goodhart를 막는다.
  */
 
 export type XpItemType = "CONSUMABLE" | "ASSET";
@@ -103,8 +104,7 @@ function qualityFieldSpecs(itemType: XpItemType): FieldSpec[] {
 }
 
 /**
- * 품질 XP. previous가 있으면 "비어 있음 → 채워짐" 델타만 지급해 같은 필드를 반복 수령하지 않는다.
- * 소급 대량 지급을 피하려면 호출부가 과거 아이템에 돌리지 말 것.
+ * 한 아이템의 품질 XP(현재 상태). previous가 있으면 토스트용 델타만 — DB에 누적하지 않는다.
  */
 export function computeQualityXp(item: QualityXpItem, previous?: QualityXpItem | null): XpAward {
   const specs = qualityFieldSpecs(item.itemType);
@@ -118,7 +118,16 @@ export function computeQualityXp(item: QualityXpItem, previous?: QualityXpItem |
   return { total: breakdown.reduce((s, e) => s + e.points, 0), breakdown };
 }
 
-/** 확정 XP — 재점검에서 PENDING → FOUND 로 올라갈 때만 호출할 것. */
+/** 가구 품질 XP = 모든 활성 아이템의 현재 충실도 합 (파생, 멱등). */
+export function sumQualityXp(items: QualityXpItem[]): number {
+  let sum = 0;
+  for (const item of items) {
+    sum += computeQualityXp(item).total;
+  }
+  return sum;
+}
+
+/** 확정 XP — 재점검에서 PENDING → FOUND 로 올라갈 때만 누적 가산. */
 export function computeConfirmXp(opts: {
   locationMatched: boolean;
   quantityMatched: boolean;

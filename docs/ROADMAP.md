@@ -103,7 +103,7 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 
 ### P3-C — quality + confirm XP (this PR)
 
-- **Pure helpers** `@stash/shared` `xp.ts`: quality weights (useful fields only; ASSET never scored on expiry/minQuantity); confirm XP for audit location/qty match. Delta-only on PATCH so refilling the same field does not farm.
-- **Storage:** `Setting` key `HOUSEHOLD_XP_TOTAL` — household total only, no leaderboard/shop/levels. Starts at 0 (no backfill of historical items).
-- **Hooks:** item create/PATCH (await grant); `/scan` create computes XP in-response and grants in background (no scan latency); audit confirm grants confirm XP only on PENDING→FOUND.
-- **UI:** dashboard total + hint; toasts name which fields paid XP.
+- **Quality (layer 1):** derived — `sumQualityXp` over current non-deleted items. Not accumulated in Setting, so empty→fill farming and backup restore both stay consistent (score follows item state). Toast may still show a per-action delta via `computeQualityXp(item, previous)` without writing DB.
+- **Confirm (layer 2):** cumulative in `Setting` key `HOUSEHOLD_CONFIRM_XP`, incremented with a single SQL `INSERT … ON CONFLICT DO UPDATE` so concurrent audit/scan grants cannot drop updates. Awarded only on audit PENDING→FOUND.
+- **Display:** `GET /api/xp` → `{ quality, confirm, total }`. No shop/levels/leaderboard. No historical backfill of confirm XP.
+- **Hooks:** create/PATCH/scan return quality toast payload only; scan match path still grants nothing (anti-pattern: scan-count rewards).

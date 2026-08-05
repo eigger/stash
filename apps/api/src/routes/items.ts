@@ -20,7 +20,6 @@ import { fireInventoryWebhook, isInventoryWebhookConfigured } from "../lib/webho
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
 import { deleteUploadedFile } from "../lib/uploads.js";
 import { encodeCsvRow, parseCsv, stripCsvFormulaGuard } from "../lib/csv.js";
-import { grantHouseholdXp } from "../lib/householdXp.js";
 import { t } from "../lib/i18n.js";
 
 const ITEM_INCLUDE = {
@@ -53,14 +52,12 @@ function toQualityXpItem(item: {
   };
 }
 
-/** 품질 XP 계산 + 가구 누적. 스캔은 await 없이 void로 호출해 응답을 막지 않는다. */
-async function applyQualityXp(
+/** 토스트용 — 품질 XP는 DB에 쓰지 않고 파생 점수/델타만 돌려준다. */
+function qualityXpToast(
   item: Parameters<typeof toQualityXpItem>[0],
   previous?: Parameters<typeof toQualityXpItem>[0] | null,
-): Promise<XpAward> {
-  const award = computeQualityXp(toQualityXpItem(item), previous ? toQualityXpItem(previous) : null);
-  if (award.total > 0) await grantHouseholdXp(award);
-  return award;
+): XpAward {
+  return computeQualityXp(toQualityXpItem(item), previous ? toQualityXpItem(previous) : null);
 }
 
 const CSV_COLUMNS = [
@@ -416,7 +413,7 @@ export async function itemRoutes(app: FastifyInstance) {
 
     const created = await prisma.item.findUnique({ where: { id: item.id }, include: ITEM_INCLUDE });
     if (created) void fireInventoryWebhook("item.updated", created);
-    const xp = created ? await applyQualityXp(created) : { total: 0, breakdown: [] };
+    const xp = created ? qualityXpToast(created) : { total: 0, breakdown: [] };
     return reply.code(201).send({ ...created, xp });
   });
 
@@ -492,7 +489,7 @@ export async function itemRoutes(app: FastifyInstance) {
       include: { ...ITEM_INCLUDE, attachments: true },
     });
     void fireInventoryWebhook("item.updated", item);
-    const xp = await applyQualityXp(item, before);
+    const xp = qualityXpToast(item, before);
     return { ...item, xp };
   });
 
@@ -694,9 +691,8 @@ export async function itemRoutes(app: FastifyInstance) {
     });
     void fireInventoryWebhook("item.updated", item);
 
-    // 품질 XP는 순수 계산만 응답에 넣고, Setting 가산은 백그라운드 — 연속 스캔 지연 금지.
-    const xp = computeQualityXp(toQualityXpItem(item));
-    if (xp.total > 0) void grantHouseholdXp(xp);
+    // 품질 XP는 파생 점수 — Setting에 쓰지 않는다. 토스트용 델타/점수만 응답.
+    const xp = qualityXpToast(item);
     return reply.code(201).send({ item, matched: false, created: true, lookup, xp });
   });
 }

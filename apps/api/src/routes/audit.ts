@@ -15,7 +15,7 @@ import { prisma } from "../lib/prisma.js";
 import { collectLocationIds, computeAuditProgress } from "../lib/auditScope.js";
 import { fireInventoryWebhook } from "../lib/webhook.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
-import { grantHouseholdXp } from "../lib/householdXp.js";
+import { grantConfirmXp } from "../lib/householdXp.js";
 import { t } from "../lib/i18n.js";
 
 const ITEM_INCLUDE = {
@@ -315,14 +315,14 @@ export async function auditRoutes(app: FastifyInstance) {
     // confirm마다 웹훅 1회 — 재점검은 벌크라 수신 자동화 부하가 커질 수 있음(ROADMAP).
     void fireInventoryWebhook("item.updated", updatedItem);
 
-    // 2층 확정 XP — PENDING→FOUND 때만. 이미 확인한 걸 다시 찍어도 반복 수령하지 않는다.
+    // 2층 확정 XP — PENDING→FOUND 때만. 원자적 누적(품질 XP와 분리).
     let xp = { total: 0, breakdown: [] as { reason: string; points: number }[] };
     if (wasPending && existing) {
       xp = computeConfirmXp({
         locationMatched: inScope,
         quantityMatched: actualQuantity === existing.expectedQuantity,
       });
-      if (xp.total > 0) await grantHouseholdXp(xp);
+      if (xp.total > 0) await grantConfirmXp(xp);
     }
 
     const refreshed = await prisma.auditSession.findUniqueOrThrow({
@@ -396,6 +396,7 @@ export async function auditRoutes(app: FastifyInstance) {
     }
 
     void fireInventoryWebhook("item.updated", item);
+    // 품질은 파생 — 토스트용 점수만. 확정 XP는 UNEXPECTED 등록에선 없음.
     const xp = computeQualityXp({
       itemType: item.itemType,
       locationId: item.locationId,
@@ -407,7 +408,6 @@ export async function auditRoutes(app: FastifyInstance) {
       warrantyExpiresAt: item.warrantyExpiresAt,
       barcodes: item.barcodes,
     });
-    if (xp.total > 0) void grantHouseholdXp(xp);
     const refreshed = await prisma.auditSession.findUniqueOrThrow({
       where: { id: session.id },
       include: sessionInclude(),

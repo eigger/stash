@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeConfirmXp, computeQualityXp, QUALITY_XP } from "@stash/shared";
+import { computeConfirmXp, computeQualityXp, QUALITY_XP, sumQualityXp } from "@stash/shared";
 
 describe("computeQualityXp", () => {
   it("이름만 있는 소모품은 0", () => {
@@ -39,7 +39,7 @@ describe("computeQualityXp", () => {
     );
   });
 
-  it("이미 채워진 필드는 수정 시 재지급하지 않는다", () => {
+  it("토스트용 델타: 이미 채워진 필드는 previous 대비 제외", () => {
     const prev = {
       itemType: "CONSUMABLE" as const,
       locationId: "loc1",
@@ -49,6 +49,31 @@ describe("computeQualityXp", () => {
     const delta = computeQualityXp(next, prev);
     expect(delta.breakdown.map((b) => b.reason)).toEqual(["category", "price"]);
     expect(delta.total).toBe(QUALITY_XP.category + QUALITY_XP.price);
+  });
+
+  it("파생 합계라 비웠다 채워도 가구 총점은 안 오른다", () => {
+    const filled = {
+      itemType: "CONSUMABLE" as const,
+      locationId: "loc1",
+    };
+    const empty = { itemType: "CONSUMABLE" as const, locationId: null };
+    const before = sumQualityXp([filled]);
+    const afterToggle = sumQualityXp([empty]);
+    const restored = sumQualityXp([filled]);
+    expect(before).toBe(QUALITY_XP.location);
+    expect(afterToggle).toBe(0);
+    expect(restored).toBe(before);
+  });
+});
+
+describe("sumQualityXp", () => {
+  it("아이템 상태 합", () => {
+    expect(
+      sumQualityXp([
+        { itemType: "CONSUMABLE", locationId: "a" },
+        { itemType: "ASSET", locationId: "b", barcodes: [{ source: "SERIAL" }] },
+      ]),
+    ).toBe(QUALITY_XP.location + QUALITY_XP.location + QUALITY_XP.serial);
   });
 });
 
