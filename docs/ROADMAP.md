@@ -104,6 +104,6 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 ### P3-C — quality + confirm XP (this PR)
 
 - **Quality (layer 1):** derived — `sumQualityXp` over current non-deleted items. Not accumulated in Setting, so empty→fill farming and backup restore both stay consistent (score follows item state). Toast may still show a per-action delta via `computeQualityXp(item, previous)` without writing DB.
-- **Confirm (layer 2):** cumulative in `Setting` key `HOUSEHOLD_CONFIRM_XP`, incremented with a single SQL `INSERT … ON CONFLICT DO UPDATE` so concurrent audit/scan grants cannot drop updates. Awarded only on audit PENDING→FOUND.
-- **Display:** `GET /api/xp` → `{ quality, confirm, total }`. No shop/levels/leaderboard. No historical backfill of confirm XP.
+- **Confirm (layer 2):** cumulative in `Setting` key `HOUSEHOLD_CONFIRM_XP`, incremented with a single SQL `INSERT … ON CONFLICT DO UPDATE` so concurrent audit/scan grants cannot drop updates. Awarded only on audit PENDING→FOUND. **Backup/restore resets confirm XP to 0** — `Setting` is excluded from backups (secrets), and `AuditSession` is also excluded (ephemeral work state), so there is no safe way to rebuild the counter; quality XP still reappears from restored items.
+- **Display:** `GET /api/xp` → `{ quality, confirm, total }` (quality is recomputed from all live items + barcodes each request — fine at household scale; if the dashboard ever feels slow, fold this into `/api/items/stats` so the same rows are not scanned twice). No shop/levels/leaderboard. No historical backfill of confirm XP.
 - **Hooks:** create/PATCH/scan return quality toast payload only; scan match path still grants nothing (anti-pattern: scan-count rewards).
