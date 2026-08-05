@@ -2,7 +2,9 @@ import type { BarcodeSymbology } from "./types";
 
 // @zxing/library 값 import를 이 모듈 최상단에서 하지 않는다.
 // items/[id]·items/new가 힌트 Map을 정적 import하면 디코더 본체가 초기 그래프에 묶인다.
-// 숫자 상수는 @zxing/library BarcodeFormat enum 값과 동일하다.
+// 숫자 상수는 @zxing/library BarcodeFormat enum 값과 동일해야 한다.
+// Dependabot이 library를 올리면 번호가 바뀔 수 있으니 barcodeScanner.test.ts가
+// 실제 enum과 대조한다 — 어긋나면 EAN13→OTHER 같은 조용한 오염이 난다.
 
 const FORMAT_EAN_13 = 7;
 const FORMAT_UPC_A = 14;

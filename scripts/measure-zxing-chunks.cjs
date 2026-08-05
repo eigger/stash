@@ -1,7 +1,24 @@
+/**
+ * After `npm run build -w apps/web`, summarize whether item detail/new client graphs
+ * still mention @zxing vs /scan (which keeps an eager import).
+ *
+ * Limitation: `zxingInThoseKB` is a substring heuristic (/zxing|BarcodeFormat|…/).
+ * A chunk that only contains the dynamic-import string "zxing" still counts its full
+ * size — so detail's "~19 KB" is an upper bound, not pure decoder bytes. Prefer the
+ * boolean `mentions library/browser` flags and scan's ~443 KB library chunk for
+ * regression signals.
+ *
+ * Usage: npm run measure:zxing   (fails if apps/web/.next is missing)
+ */
 const fs = require("fs");
 const path = require("path");
 
 const root = path.join("apps", "web", ".next");
+
+if (!fs.existsSync(root)) {
+  console.error("Missing apps/web/.next — run `npm run build -w apps/web` first, then retry.");
+  process.exit(1);
+}
 
 function read(p) {
   return fs.readFileSync(p, "utf8");

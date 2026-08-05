@@ -15,7 +15,8 @@
     "prisma:migrate": "npm run prisma:migrate -w apps/api",
     "seed": "npm run seed -w apps/api",
     "test": "npm run build:shared && npm run test -w apps/api && npm run test -w apps/web",
-    "lint": "npm run lint -w apps/api && npm run lint -w apps/web"
+    "lint": "npm run lint -w apps/api && npm run lint -w apps/web",
+    "measure:zxing": "node scripts/measure-zxing-chunks.cjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1"
