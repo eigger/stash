@@ -57,8 +57,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-stash}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-stash}
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -84,6 +82,7 @@ services:
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost}
       UPCITEMDB_API_KEY: ${UPCITEMDB_API_KEY:-}
       INVENTORY_WEBHOOK_URL: ${INVENTORY_WEBHOOK_URL:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
 
   web:
     image: ghcr.io/${GH_REPOSITORY_OWNER:-eigger}/stash-web:latest

@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, apiJson, API_URL, getToken } from "../../lib/api";
+import { apiFetch, apiJson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import { ItemCard } from "../../components/ItemCard";
+import { downloadBlob, todayStamp } from "../../lib/download";
 import type { Item, Location, Category } from "../../lib/types";
-
 const PAGE_SIZE = 30;
 const FILTERS_KEY = "stash_items_filters";
 const NONE_VALUE = "__none__";
@@ -66,6 +66,7 @@ export default function ItemsPage() {
   const [bulkLocationId, setBulkLocationId] = useState("");
   const [bulkCategoryId, setBulkCategoryId] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [csvExporting, setCsvExporting] = useState(false);
   // 응답이 요청 순서와 다르게 도착해도(빠른 타이핑 등) 가장 최근 요청의 결과만 반영한다.
   const requestSeqRef = useRef(0);
   const filterKey = `${q}|${locationId}|${categoryId}|${itemType}|${sort}`;
@@ -121,9 +122,17 @@ export default function ItemsPage() {
       });
   }, [user, filterKey, page, refreshKey, q, locationId, categoryId, itemType, sort]);
 
-  function handleCsvExport() {
-    const token = getToken();
-    window.location.href = `${API_URL}/api/items/export.csv?token=${token}`;
+  async function handleCsvExport() {
+    setCsvExporting(true);
+    try {
+      const res = await apiFetch("/api/items/export.csv");
+      if (!res.ok) throw new Error(t("csvExportFailFallback"));
+      await downloadBlob(res, `stash_items_${todayStamp()}.csv`);
+    } catch (err: any) {
+      show(err.message, "error");
+    } finally {
+      setCsvExporting(false);
+    }
   }
 
   async function handleCsvImport(e: ChangeEvent<HTMLInputElement>) {
@@ -255,8 +264,8 @@ export default function ItemsPage() {
           <option value="quantityAsc">{t("sortQuantityAsc")}</option>
           <option value="expiryAsc">{t("sortExpiryAsc")}</option>
         </select>
-        <button type="button" className="secondary" onClick={handleCsvExport}>
-          {t("csvExportButton")}
+        <button type="button" className="secondary" onClick={handleCsvExport} disabled={csvExporting}>
+          {csvExporting ? t("exportingLabel") : t("csvExportButton")}
         </button>
         <label>
           {importing ? t("processingLabel") : t("csvImportButton")}

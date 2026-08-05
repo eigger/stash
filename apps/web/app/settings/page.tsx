@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { API_URL, apiFetch, apiJson, getToken } from "../../lib/api";
+import { apiFetch, apiJson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
@@ -10,13 +10,14 @@ import { PushNotificationSettings } from "../../components/PushNotificationSetti
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { CurrencyToggle } from "../../components/CurrencyToggle";
-
+import { downloadBlob, todayStamp } from "../../lib/download";
 export default function SettingsPage() {
   const router = useRouter();
   const { user, loading, isAdmin, logout } = useAuth();
   const { show } = useToast();
   const { t } = useLocale();
   const [restoring, setRestoring] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -41,7 +42,9 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      show(t("passwordChangedToast"), "success");
+      show(t("passwordChangedReLoginToast"), "success");
+      // 서버가 tokenVersion을 올려 현재 JWT를 무효화했으므로 재로그인한다.
+      await logout();
     } catch (err: any) {
       show(t("passwordChangeFailToast", { msg: err.message }), "error");
     } finally {
@@ -50,8 +53,16 @@ export default function SettingsPage() {
   }
 
   async function handleExport() {
-    const token = getToken();
-    window.location.href = `${API_URL}/api/backup/export?token=${token}`;
+    setExporting(true);
+    try {
+      const res = await apiFetch("/api/backup/export");
+      if (!res.ok) throw new Error(t("exportFailFallback"));
+      await downloadBlob(res, `stash_backup_${todayStamp()}.tar.gz`);
+    } catch (err: any) {
+      show(err.message, "error");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function handleRestore(e: ChangeEvent<HTMLInputElement>) {
@@ -63,7 +74,18 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append("file", file);
       const res = await apiFetch("/api/backup/restore", { method: "POST", body: formData });
-      if (!res.ok) throw new Error(t("restoreFailFallback"));
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(typeof body?.error === "string" ? body.error : t("restoreFailFallback"));
+
+      const recoveries = (body?.recoveryPasswords ?? body?.adminRecoveryPasswords) as
+        | { email: string; role?: string; temporaryPassword: string }[]
+        | undefined;
+      if (recoveries?.length) {
+        const lines = recoveries
+          .map((r) => `${r.email}${r.role ? ` (${r.role})` : ""}: ${r.temporaryPassword}`)
+          .join("\n");
+        window.alert(t("restoreRecoveryAlert", { lines }));
+      }
       show(t("restoreSuccessToast"), "success");
     } catch (err: any) {
       show(err.message, "error");
@@ -133,8 +155,11 @@ export default function SettingsPage() {
         <div className="card">
           <h2 style={{ marginTop: 0 }}>{t("backupRestoreTitle")}</h2>
           <p className="meta">{t("backupRestoreHint")}</p>
+          <p className="meta">{t("backupSecurityHint")}</p>
           <div className="form">
-            <button onClick={handleExport}>{t("exportButton")}</button>
+            <button onClick={handleExport} disabled={exporting}>
+              {exporting ? t("exportingLabel") : t("exportButton")}
+            </button>
             <label>
               {t("restoreLabel")}
               <input type="file" accept=".tar.gz" onChange={handleRestore} disabled={restoring} />

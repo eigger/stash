@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat } from "@zxing/library";
 import { API_URL, apiFetch, apiJson } from "../../../lib/api";
+import { photoUrlFromFilePath, photoUrlMatches, resolvePhotoUrl } from "../../../lib/media";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
@@ -292,9 +293,9 @@ export default function ItemDetailPage() {
     const data = await refresh();
     const images = data.attachments?.filter((a) => a.mimeType.startsWith("image/")) ?? [];
     if (images.length === 1) {
-      const url = `${API_URL}/api/attachments/file/${images[0].filePath}`;
+      const url = photoUrlFromFilePath(images[0].filePath);
       if (data.photoUrl !== url) await setPhotoUrl(data.id, url);
-    } else if (data.photoUrl && !images.some((a) => `${API_URL}/api/attachments/file/${a.filePath}` === data.photoUrl)) {
+    } else if (data.photoUrl && !images.some((a) => photoUrlMatches(data.photoUrl, a.filePath))) {
       await setPhotoUrl(data.id, null);
     }
   }
@@ -367,7 +368,7 @@ export default function ItemDetailPage() {
       <div className="page-header">
         {item.photoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.photoUrl} alt={item.name} className="item-avatar" />
+          <img src={resolvePhotoUrl(item.photoUrl) ?? undefined} alt={item.name} className="item-avatar" />
         )}
         <input
           className="item-name-input"
@@ -709,7 +710,7 @@ export default function ItemDetailPage() {
               return item.attachments!.map((a) => {
                 const isImage = a.mimeType.startsWith("image/");
                 const fileUrl = `${API_URL}/api/attachments/file/${a.filePath}`;
-                const isPrimary = isImage && item.photoUrl === fileUrl;
+                const isPrimary = isImage && photoUrlMatches(item.photoUrl, a.filePath);
                 return (
                   <div key={a.id} className="attachment-tile">
                     <a className="attachment-thumb" href={fileUrl} target="_blank" rel="noreferrer" title={formatDateTime(a.uploadedAt)}>
@@ -737,7 +738,7 @@ export default function ItemDetailPage() {
                       <button
                         type="button"
                         className="btn-action attachment-set-primary"
-                        onClick={() => setPhotoUrl(item.id, isPrimary ? null : fileUrl)}
+                        onClick={() => setPhotoUrl(item.id, isPrimary ? null : photoUrlFromFilePath(a.filePath))}
                       >
                         {isPrimary ? t("unsetPrimaryPhotoButton") : t("setPrimaryPhotoButton")}
                       </button>

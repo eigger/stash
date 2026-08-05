@@ -475,7 +475,14 @@ const dict = {
     ko: "전체 데이터를 파일로 내보내거나, 백업 파일로 복원할 수 있습니다.",
     en: "Export all data to a file, or restore from a backup file.",
   },
+  backupSecurityHint: {
+    ko: "백업 파일에는 인벤토리 전체(품목·위치·가격·영수증 파일)가 암호화 없이 들어 있으니 보관에 주의하세요. 계정 비밀번호 해시는 포함되지 않으며, 복원 시 임시 비밀번호가 계정별로 안내됩니다.",
+    en: "Backups contain your full inventory (items, locations, prices, receipt files) unencrypted — store them carefully. Password hashes are omitted; restore will show one-time passwords per account when needed.",
+  },
   exportButton: { ko: "백업 내보내기", en: "Export backup" },
+  exportingLabel: { ko: "내보내는 중...", en: "Exporting..." },
+  exportFailFallback: { ko: "백업 내보내기 실패", en: "Backup export failed" },
+  csvExportFailFallback: { ko: "CSV 내보내기 실패", en: "CSV export failed" },
   restoreLabel: { ko: "백업 파일로 복원", en: "Restore from backup file" },
   confirmRestore: {
     ko: "복원하면 현재 데이터가 모두 백업 파일의 내용으로 대체됩니다. 계속할까요?",
@@ -483,6 +490,24 @@ const dict = {
   },
   restoreFailFallback: { ko: "복원 실패", en: "Restore failed" },
   restoreSuccessToast: { ko: "복원이 완료되었습니다", en: "Restore complete" },
+  restoreRecoveryAlert: {
+    ko: "복원이 완료되었습니다.\n\n아래 임시 비밀번호로 로그인한 뒤 각자 비밀번호를 변경하세요.\n(이 화면을 닫으면 다시 볼 수 없습니다)\n\n{lines}",
+    en: "Restore complete.\n\nLog in with these one-time passwords, then each user should change theirs.\n(You won't see this again after closing)\n\n{lines}",
+  },
+  passwordChangedReLoginToast: {
+    ko: "비밀번호가 변경되었습니다. 다시 로그인해 주세요.",
+    en: "Password changed. Please sign in again.",
+  },
+  webhookSecretLabel: { ko: "웹훅 서명 시크릿:", en: "Webhook signing secret:" },
+  webhookSecretHint: {
+    ko: "설정하면 요청에 X-Stash-Timestamp / X-Stash-Signature 헤더가 붙습니다. 미설정 시 기존처럼 서명 없이 전송됩니다.",
+    en: "When set, requests include X-Stash-Timestamp / X-Stash-Signature. If unset, payloads are sent unsigned (previous behavior).",
+  },
+  webhookSecretPlaceholder: { ko: "HMAC 시크릿 입력", en: "Enter HMAC secret" },
+  webhookSignatureHint: {
+    ko: "수신 측 검증: HMAC-SHA256(시크릿, \"<X-Stash-Timestamp>.<원본 JSON body>\") 결과가 sha256=<hex> 형태인 X-Stash-Signature와 일치하는지 확인하세요.",
+    en: "Receiver verification: HMAC-SHA256(secret, \"<X-Stash-Timestamp>.<raw JSON body>\") must match X-Stash-Signature (sha256=<hex>).",
+  },
   languageLabel: { ko: "언어", en: "Language" },
   currencyDefaultLabel: { ko: "기본 통화", en: "Default currency" },
   currencyKrwOption: { ko: "원 (KRW)", en: "KRW" },

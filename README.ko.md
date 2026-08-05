@@ -99,7 +99,7 @@ community-scripts 스타일 설치 마법사가 Docker가 포함된 Debian 13 LX
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-시작 전에 `.env`에 `POSTGRES_PASSWORD`, `JWT_SECRET`을 설정하세요. 이미지는 `ghcr.io/<owner>/stash-api` / `stash-web`을 씁니다 — 포크했다면 `GH_REPOSITORY_OWNER`(및 `proxmox/install/stash-install.sh`의 이미지 이름)를 맞추세요.
+시작 전에 `.env`에 `POSTGRES_PASSWORD`, `JWT_SECRET`을 강한 난수 값으로 설정하세요 (예: `openssl rand -hex 32`). 프로덕션에서는 `JWT_SECRET`이 없거나 `changeme` / `dev-secret-change-me` 같은 알려진 기본값이면 API가 **기동을 거부**합니다. 이미지는 `ghcr.io/<owner>/stash-api` / `stash-web`을 씁니다 — 포크했다면 `GH_REPOSITORY_OWNER`(및 `proxmox/install/stash-install.sh`의 이미지 이름)를 맞추세요.
 
 ### 2. 최초 관리자 생성
 
@@ -127,11 +127,11 @@ docker compose -f docker-compose.prod.yml up -d
 | 라벨 인쇄 | 더보기 → **라벨 인쇄** |
 | 삭제한 아이템 복구 | 더보기 → **휴지통** |
 | 유통기한 / 보증 알림 | 설정 → **알림** |
-| 백업 / 복원 | 설정 → **백업 / 복원** |
+| 백업 / 복원 | 설정 → **백업 / 복원** (백업은 암호화되지 않은 인벤토리 전체 덤프이므로 보관에 주의. 비밀번호 해시는 제외되며, 복원 시 필요하면 계정별 임시 비밀번호가 안내됩니다) |
 
 ### 5. 재고 이벤트 웹훅 (선택)
 
-**설정 → 외부 연동**에서 URL 하나를 등록합니다. 아이템 생성 / 수정 / 스캔 시, 그리고 명시적 출력 요청 시 Stash가 JSON 페이로드를 POST하므로, 받는 자동화(예: Home Assistant)가 자체적으로 라벨을 렌더링할 수 있습니다. 페이로드 형식은 [`docs/ROADMAP.md`](./docs/ROADMAP.md) 참고.
+**설정 → 외부 연동**에서 URL 하나를 등록합니다. 아이템 생성 / 수정 / 스캔 시, 그리고 명시적 출력 요청 시 Stash가 JSON 페이로드를 POST하므로, 받는 자동화(예: Home Assistant)가 자체적으로 라벨을 렌더링할 수 있습니다. 선택적으로 서명 시크릿(`INVENTORY_WEBHOOK_SECRET`)을 설정하면 수신 측이 `X-Stash-Timestamp` / `X-Stash-Signature`(HMAC-SHA256)로 검증할 수 있습니다. 페이로드 형식은 [`docs/ROADMAP.md`](./docs/ROADMAP.md) 참고.
 
 Home Assistant를 통해 다음을 사용할 수 있습니다.
 
@@ -161,7 +161,7 @@ stash/
 
 ```sh
 npm install
-cp .env.example .env   # POSTGRES_PASSWORD, JWT_SECRET 설정
+cp .env.example .env   # POSTGRES_PASSWORD / JWT_SECRET 은 openssl rand -hex 32 로 생성
 docker compose up -d postgres
 npm run prisma:migrate
 npm run seed -w apps/api   # 선택: 부트스트랩 UI 대신 관리자 시드

@@ -33,6 +33,7 @@ export default function IntegrationsPage() {
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [value, setValue] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [appPublicUrl, setAppPublicUrl] = useState("");
   const [enabledProviders, setEnabledProviders] = useState<string[]>([]);
   const [naverClientId, setNaverClientId] = useState("");
@@ -124,6 +125,30 @@ export default function IntegrationsPage() {
     }
   }
 
+  async function handleWebhookSecretSave(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await apiJson("/api/settings/INVENTORY_WEBHOOK_SECRET", {
+        method: "PUT",
+        body: JSON.stringify({ value: webhookSecret }),
+      });
+      setWebhookSecret("");
+      await refresh();
+      show(t("savedToast"), "success");
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
+  async function handleWebhookSecretClear() {
+    try {
+      await apiJson("/api/settings/INVENTORY_WEBHOOK_SECRET", { method: "DELETE" });
+      await refresh();
+    } catch (err: any) {
+      show(err.message, "error");
+    }
+  }
+
   async function handleAppUrlSave(e: FormEvent) {
     e.preventDefault();
     try {
@@ -202,6 +227,7 @@ export default function IntegrationsPage() {
 
   const upc = settings.find((s) => s.key === "UPCITEMDB_API_KEY");
   const webhook = settings.find((s) => s.key === "INVENTORY_WEBHOOK_URL");
+  const webhookSecretRow = settings.find((s) => s.key === "INVENTORY_WEBHOOK_SECRET");
   const appUrl = settings.find((s) => s.key === "APP_PUBLIC_URL");
   const naverClientIdRow = settings.find((s) => s.key === "NAVER_CLIENT_ID");
   const naverClientSecretRow = settings.find((s) => s.key === "NAVER_CLIENT_SECRET");
@@ -331,6 +357,11 @@ export default function IntegrationsPage() {
             <li>{t("payloadImageDesc")}</li>
             <li><code>timestamp</code></li>
           </ul>
+          <p className="meta" style={{ marginTop: 8 }}>{t("webhookSignatureHint")}</p>
+          <pre className="meta" style={{ whiteSpace: "pre-wrap", fontSize: "0.8rem" }}>
+{`# HMAC-SHA256("<timestamp>.<raw body>", secret) → X-Stash-Signature: sha256=<hex>
+# headers: X-Stash-Timestamp, X-Stash-Signature`}
+          </pre>
         </details>
         <p className="meta">{t("statusLabel")} {webhook?.hasValue ? t("statusSet") : t("statusUnset")}</p>
         {webhook?.hasValue && webhookFailure && (
@@ -350,6 +381,29 @@ export default function IntegrationsPage() {
             </button>
             {webhook?.hasValue && (
               <button type="button" className="secondary" onClick={handleWebhookClear} style={{ flex: 1 }}>
+                {t("remove")}
+              </button>
+            )}
+          </div>
+        </form>
+        <p className="meta" style={{ marginTop: 12 }}>
+          {t("webhookSecretLabel")}{" "}
+          {webhookSecretRow?.hasValue ? t("statusSet") : t("statusUnset")}
+        </p>
+        <p className="meta">{t("webhookSecretHint")}</p>
+        <form onSubmit={handleWebhookSecretSave} className="form">
+          <input
+            type="password"
+            placeholder={t("webhookSecretPlaceholder")}
+            value={webhookSecret}
+            onChange={(e) => setWebhookSecret(e.target.value)}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" style={{ flex: 1 }}>
+              {t("save")}
+            </button>
+            {webhookSecretRow?.hasValue && (
+              <button type="button" className="secondary" onClick={handleWebhookSecretClear} style={{ flex: 1 }}>
                 {t("remove")}
               </button>
             )}

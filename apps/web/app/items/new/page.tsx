@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { useRouter } from "next/navigation";
 import { BrowserCodeReader, BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat } from "@zxing/library";
-import { API_URL, apiFetch, apiJson } from "../../../lib/api";
+import { apiFetch, apiJson } from "../../../lib/api";
+import { photoUrlFromFilePath } from "../../../lib/media";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../lib/toast-context";
 import { useLocale } from "../../../lib/i18n/locale-context";
@@ -175,7 +176,7 @@ export default function NewItemPage() {
           const attachment = await res.json();
           await apiJson(`/api/items/${item.id}`, {
             method: "PATCH",
-            body: JSON.stringify({ photoUrl: `${API_URL}/api/attachments/file/${attachment.filePath}` }),
+            body: JSON.stringify({ photoUrl: photoUrlFromFilePath(attachment.filePath) }),
           });
         } catch {
           // 아이템 자체는 이미 등록됐으니, 사진 업로드 실패로 등록 자체를 막지 않는다 —

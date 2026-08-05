@@ -99,7 +99,7 @@ The community-scripts-style installer creates a Debian 13 LXC with Docker, write
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Set `POSTGRES_PASSWORD` and `JWT_SECRET` in `.env` first. Images come from `ghcr.io/<owner>/stash-api` / `stash-web` — set `GH_REPOSITORY_OWNER` (and the image names in `proxmox/install/stash-install.sh`) to match your fork.
+Set `POSTGRES_PASSWORD` and `JWT_SECRET` in `.env` first — both must be strong random values (e.g. `openssl rand -hex 32`). In production the API **refuses to start** if `JWT_SECRET` is missing or set to a known insecure default (`changeme`, `dev-secret-change-me`). Images come from `ghcr.io/<owner>/stash-api` / `stash-web` — set `GH_REPOSITORY_OWNER` (and the image names in `proxmox/install/stash-install.sh`) to match your fork.
 
 ### 2. Create the first admin
 
@@ -127,11 +127,11 @@ From **More → Manage locations / categories**, create where things live (rooms
 | Print labels | More → **Print labels** |
 | Restore a deleted item | More → **Trash** |
 | Expiry / warranty alerts | Settings → **Notifications** |
-| Backup / restore | Settings → **Backup / restore** |
+| Backup / restore | Settings → **Backup / restore** (backups are unencrypted inventory dumps — store carefully; password hashes are omitted and restore shows one-time passwords for every account that needs them) |
 
 ### 5. Inventory webhook (optional)
 
-Set one URL under **Settings → Integrations**. Stash POSTs a JSON payload on item create / update / scan and on an explicit print request, so a receiving automation (e.g. Home Assistant) can render its own label. See [`docs/ROADMAP.md`](./docs/ROADMAP.md) for the payload shape.
+Set one URL under **Settings → Integrations**. Stash POSTs a JSON payload on item create / update / scan and on an explicit print request, so a receiving automation (e.g. Home Assistant) can render its own label. Optionally set a signing secret (`INVENTORY_WEBHOOK_SECRET`) so receivers can verify `X-Stash-Timestamp` / `X-Stash-Signature` (HMAC-SHA256). See [`docs/ROADMAP.md`](./docs/ROADMAP.md) for the payload shape.
 
 Via Home Assistant you can use:
 
@@ -161,7 +161,7 @@ stash/
 
 ```sh
 npm install
-cp .env.example .env   # set POSTGRES_PASSWORD, JWT_SECRET
+cp .env.example .env   # generate POSTGRES_PASSWORD / JWT_SECRET with openssl rand -hex 32
 docker compose up -d postgres
 npm run prisma:migrate
 npm run seed -w apps/api   # optional: seed admin instead of the bootstrap UI

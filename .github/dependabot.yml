@@ -1,0 +1,37 @@
+# Dependabot — 주 1회 npm / Actions / Docker 베이스 이미지 업데이트
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      production-minor-patch:
+        dependency-type: production
+        update-types:
+          - "minor"
+          - "patch"
+      development-minor-patch:
+        dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: "/apps/api"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: "/apps/web"
+    schedule:
+      interval: weekly

@@ -54,6 +54,8 @@ model User {
   email        String   @unique
   passwordHash String
   role         UserRole @default(GENERAL)
+  // 비밀번호 변경·로그아웃 시 증가시켜 기존 JWT를 무효화한다. 토큰 페이로드의 tv와 대조.
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
 
   createdItems      Item[]              @relation("ItemCreatedBy")

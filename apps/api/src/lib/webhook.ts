@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { getSetting, setSetting } from "./settings.js";
 import { prisma } from "./prisma.js";
 
@@ -93,6 +94,12 @@ export function buildWebhookPayload(
   };
 }
 
+/** HMAC-SHA256 서명. 수신 측이 발신자를 검증할 수 있게 한다. body는 실제 전송 바이트와 동일해야 한다. */
+export function signWebhookBody(secret: string, timestampSec: number, body: string): string {
+  const mac = createHmac("sha256", secret).update(`${timestampSec}.${body}`).digest("hex");
+  return `sha256=${mac}`;
+}
+
 export async function isInventoryWebhookConfigured(): Promise<boolean> {
   const url = await getSetting("INVENTORY_WEBHOOK_URL", process.env.INVENTORY_WEBHOOK_URL);
   return Boolean(url);
@@ -110,12 +117,23 @@ export async function fireInventoryWebhook(
 
   const baseUrl = (await getSetting("APP_PUBLIC_URL", process.env.APP_PUBLIC_URL)) || DEFAULT_APP_PUBLIC_URL;
   const payload = buildWebhookPayload(event, item, baseUrl, barcodeId);
+  // stringify 결과를 변수에 담아 서명과 body에 같은 바이트를 쓴다.
+  const body = JSON.stringify(payload);
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // 시크릿 미설정 시 기존 동작 유지(하위 호환). 이미 배포된 자동화를 깨면 안 된다.
+  const secret = await getSetting("INVENTORY_WEBHOOK_SECRET");
+  if (secret) {
+    const ts = Math.floor(Date.now() / 1000);
+    headers["X-Stash-Timestamp"] = String(ts);
+    headers["X-Stash-Signature"] = signWebhookBody(secret, ts, body);
+  }
 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers,
+      body,
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

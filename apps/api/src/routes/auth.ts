@@ -8,6 +8,11 @@ import {
 } from "@stash/shared";
 import { prisma } from "../lib/prisma.js";
 import { t } from "../lib/i18n.js";
+import { bumpTokenVersion, invalidateTokenVersionCache } from "../lib/tokenVersion.js";
+import { clearMediaCookie, setMediaCookie } from "../lib/mediaAuth.js";
+
+/** API JWT 수명 — 자체 호스팅이라 재로그인 부담을 고려해 7일로 둔다(기존 90일에서 단축). */
+const JWT_EXPIRES_IN = "7d";
 
 export async function authRoutes(app: FastifyInstance) {
   app.get("/bootstrap/status", async () => {
@@ -49,7 +54,15 @@ export async function authRoutes(app: FastifyInstance) {
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return reply.code(401).send({ error: t("invalidCredentials", request.locale) });
 
-      const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: "90d" });
+      // tv 클레임으로 비밀번호 변경/로그아웃 시 기존 토큰을 무효화한다.
+      const token = app.jwt.sign(
+        { sub: user.id, role: user.role, tv: user.tokenVersion },
+        { expiresIn: JWT_EXPIRES_IN },
+      );
+
+      // <img src>용 미디어 전용 httpOnly 쿠키. API JWT를 그대로 넣지 않고 짧은 수명·purpose 분리.
+      setMediaCookie(app, reply, user.id);
+
       return {
         token,
         user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -57,9 +70,21 @@ export async function authRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get("/me", { preHandler: [app.authenticate] }, async (request) => {
+  // 로그아웃은 전체 기기 토큰을 무효화(tokenVersion++)하고 미디어 쿠키도 지운다.
+  // 기기별 세션 목록은 없어서 "이 기기만" 로그아웃은 지원하지 않는다.
+  app.post("/logout", { preHandler: [app.authenticate] }, async (request, reply) => {
+    await bumpTokenVersion(request.user.sub);
+    clearMediaCookie(reply);
+    return reply.code(204).send();
+  });
+
+  app.get("/me", { preHandler: [app.authenticate] }, async (request, reply) => {
     const user = await prisma.user.findUnique({ where: { id: request.user.sub } });
     if (!user) return null;
+    // AuthProvider 마운트·탭 복귀(visibilitychange) 때마다 /me가 호출되므로
+    // 여기서 미디어 쿠키를 슬라이딩 갱신한다. 로그인만 심으면 24h 뒤 JWT는 살아 있는데
+    // 사진만 전부 401이 된다.
+    setMediaCookie(app, reply, user.id);
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   });
 
@@ -126,6 +151,13 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     const user = await prisma.user.update({ where: { id: userId }, data: updateData });
+    if (newPassword) {
+      // 비밀번호가 바뀌면 기존 토큰을 전부 무효화한다(탈취 대응). 현재 세션도 재로그인 필요.
+      await bumpTokenVersion(userId);
+      clearMediaCookie(reply);
+    } else {
+      invalidateTokenVersionCache(userId);
+    }
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   });
 }

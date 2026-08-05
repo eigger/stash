@@ -7,14 +7,23 @@ import { prisma } from "../lib/prisma.js";
 import { processImageForStorage } from "../lib/imageProcessing.js";
 import { UPLOAD_DIR, deleteUploadedFile } from "../lib/uploads.js";
 import { t } from "../lib/i18n.js";
+import { requireMediaAccess } from "../lib/mediaAuth.js";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
-// 파일 서빙은 의도적으로 인증 없이 공개한다 — <img src>는 Authorization 헤더를 보낼 수
-// 없어서 인증을 요구하면 사진이 영영 안 뜬다. 저장 파일명이 추측 불가능한 UUID라
-// barcodes.ts의 라벨 이미지 공개 라우트와 같은 근거로 URL을 아는 사람만 접근 가능하다.
-export async function publicAttachmentRoutes(app: FastifyInstance) {
+function safeContentType(mimeType: string): string {
+  // DB에 저장된 값을 그대로 쓰지 않고 화이트리스트를 한 번 더 통과시킨다.
+  return ALLOWED_MIME.has(mimeType) ? mimeType : "application/octet-stream";
+}
+
+// <img src>는 Authorization 헤더를 못 보내므로, 로그인 시 내려준 httpOnly 미디어 쿠키
+// (또는 Bearer)로 인증한다. barcodes.ts의 라벨 공개 라우트와 달리 영수증·보증서 PDF도
+// 서빙하므로 "URL을 아는 사람"만으로는 부족하다.
+export async function mediaAttachmentRoutes(app: FastifyInstance) {
   app.get("/file/:filename", async (request, reply) => {
+    const allowed = await requireMediaAccess(app, request, reply);
+    if (!allowed) return;
+
     const { filename } = request.params as { filename: string };
     const safeName = path.basename(filename); // 경로 탐색 공격 방지
     const filePath = path.join(UPLOAD_DIR, safeName);
@@ -23,7 +32,16 @@ export async function publicAttachmentRoutes(app: FastifyInstance) {
     if (!attachment) return reply.code(404).send({ error: t("fileNotFound", request.locale) });
     if (!existsSync(filePath)) return reply.code(404).send({ error: t("fileMissingOnDisk", request.locale) });
 
-    reply.type(attachment.mimeType);
+    const contentType = safeContentType(attachment.mimeType);
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.type(contentType);
+
+    // PDF는 브라우저에서 인라인 실행(JS 포함 가능)되지 않도록 강제 다운로드.
+    // 이미지는 <img src>로 써야 하므로 인라인 유지.
+    if (contentType === "application/pdf") {
+      reply.header("Content-Disposition", `attachment; filename="${safeName}"`);
+    }
+
     return createReadStream(filePath);
   });
 }

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiJson } from "../../lib/api";
+import { resolvePhotoUrl } from "../../lib/media";
 import { useAuth } from "../../lib/auth-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import type { Item, StockMovementReason, StockMovementWithItem } from "../../lib/types";
@@ -84,7 +85,7 @@ function HistoryPageInner() {
         <div key={m.id} className="card item-card">
           {m.item.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img className="thumb" src={m.item.photoUrl} alt="" />
+            <img className="thumb" src={resolvePhotoUrl(m.item.photoUrl) ?? undefined} alt="" />
           ) : (
             <div className="thumb" />
           )}

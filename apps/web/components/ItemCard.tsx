@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { apiJson } from "../lib/api";
+import { resolvePhotoUrl } from "../lib/media";
 import { useToast } from "../lib/toast-context";
 import { useLocale } from "../lib/i18n/locale-context";
 import type { TranslationKey } from "../lib/i18n/translations";
@@ -118,7 +119,7 @@ export function ItemCard({ item, onChange, selectable, selected, onToggleSelect,
       )}
       {current.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="thumb" src={current.photoUrl} alt="" />
+        <img className="thumb" src={resolvePhotoUrl(current.photoUrl) ?? undefined} alt="" />
       ) : (
         <div className="thumb" />
       )}

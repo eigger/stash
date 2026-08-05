@@ -1,5 +1,6 @@
+import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { buildLabelImageUrl, buildWebhookPayload } from "./webhook.js";
+import { buildLabelImageUrl, buildWebhookPayload, signWebhookBody } from "./webhook.js";
 
 describe("buildLabelImageUrl", () => {
   it("builds a public label.png URL from the given base URL", () => {
@@ -109,5 +110,24 @@ describe("buildWebhookPayload", () => {
     expect(payload.barcodeValue).toBeNull();
     expect(payload.symbology).toBeNull();
     expect(payload.labelImageUrl).toBeNull();
+  });
+});
+
+describe("signWebhookBody", () => {
+  it("produces a stable HMAC over timestamp.body", () => {
+    const body = JSON.stringify({ event: "item.updated", itemId: "x" });
+    const sig = signWebhookBody("test-secret", 1700000000, body);
+    expect(sig).toBe(
+      "sha256=" +
+        createHmac("sha256", "test-secret").update(`1700000000.${body}`).digest("hex"),
+    );
+  });
+
+  it("changes when the body or timestamp changes", () => {
+    const a = signWebhookBody("s", 1, '{"a":1}');
+    const b = signWebhookBody("s", 2, '{"a":1}');
+    const c = signWebhookBody("s", 1, '{"a":2}');
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(c);
   });
 });

@@ -14,7 +14,7 @@ import { resolveProduct } from "../lib/barcodeLookup/index.js";
 import { fireInventoryWebhook, isInventoryWebhookConfigured } from "../lib/webhook.js";
 import { isUniqueConstraintError } from "../lib/prismaErrors.js";
 import { deleteUploadedFile } from "../lib/uploads.js";
-import { encodeCsvRow, parseCsv } from "../lib/csv.js";
+import { encodeCsvRow, parseCsv, stripCsvFormulaGuard } from "../lib/csv.js";
 import { t } from "../lib/i18n.js";
 
 const ITEM_INCLUDE = {
@@ -175,7 +175,9 @@ export async function itemRoutes(app: FastifyInstance) {
     const colIdx = (col: string) => header.indexOf(col);
     const cell = (row: string[], col: string) => {
       const idx = colIdx(col);
-      return idx !== -1 ? row[idx]?.trim() : undefined;
+      if (idx === -1) return undefined;
+      const raw = row[idx]?.trim();
+      return raw ? stripCsvFormulaGuard(raw) : undefined;
     };
 
     const locationCache = new Map<string, string>();
@@ -225,7 +227,7 @@ export async function itemRoutes(app: FastifyInstance) {
 
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r];
-      const name = row[nameIdx]?.trim();
+      const name = stripCsvFormulaGuard(row[nameIdx]?.trim() ?? "");
       if (!name) {
         errors.push(t("csvRowNameEmpty", request.locale, { row: r + 1 }));
         continue;

@@ -10,7 +10,7 @@ interface AuthContextValue {
   loading: boolean;
   isAdmin: boolean;
   login: (token: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,13 +55,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // PWA/탭을 24h 넘게 리로드 없이 열어두면 미디어 쿠키만 만료되어 사진이 깨진다.
+  // 탭이 다시 보일 때 /me를 호출해 쿠키를 슬라이딩 갱신한다(백그라운드 폴링은 하지 않음).
+  useEffect(() => {
+    function onVisibility() {
+      if (document.visibilityState === "visible" && getToken()) {
+        void fetchMe();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function login(token: string) {
     setToken(token);
     setLoading(true);
     await fetchMe();
   }
 
-  function logout() {
+  async function logout() {
+    // 서버에서 tokenVersion을 올리고 미디어 쿠키를 지운다. 실패해도 로컬 상태는 비운다.
+    try {
+      if (getToken()) {
+        await apiFetch("/api/auth/logout", { method: "POST" });
+      }
+    } catch {
+      // ignore
+    }
     clearToken();
     localStorage.removeItem(CACHED_USER_KEY);
     setUser(null);
