@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { freshnessTone } from "@stash/shared";
 import { apiJson } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
@@ -62,7 +64,14 @@ export default function LocationsPage() {
 
   return (
     <main className="container">
-      <h1>{t("locationsTitle")}</h1>
+      <div className="page-header">
+        <h1>{t("locationsTitle")}</h1>
+        <Link href="/audit">
+          <button type="button" className="secondary">
+            {t("freshnessAuditLink")}
+          </button>
+        </Link>
+      </div>
       <form onSubmit={handleSubmit} className="form" style={{ marginBottom: 16 }}>
         <input placeholder={t("newLocationPlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
         <select value={parentId} onChange={(e) => setParentId(e.target.value)}>
@@ -77,18 +86,31 @@ export default function LocationsPage() {
         <button type="submit">{t("add")}</button>
       </form>
 
-      {orderedLocations.map(({ location: l, depth }) => (
-        <div key={l.id} className="tree-row" style={{ paddingLeft: depth * 20 }}>
-          <div>
-            {depth > 0 && <span className="meta">└ </span>}
-            {l.name}
-            <span className="meta"> · {t("itemCount", { n: l._count?.items ?? 0 })}</span>
+      {orderedLocations.map(({ location: l, depth }) => {
+        const f = l.freshness ?? { freshCount: 0, totalCount: 0, ratio: 1, percent: 100 };
+        const tone = freshnessTone(f);
+        return (
+          <div key={l.id} className="tree-row" style={{ paddingLeft: depth * 20 }}>
+            <div className="tree-row-value">
+              {depth > 0 && <span className="meta">└ </span>}
+              <span className={`freshness-dot tone-${tone}`} aria-hidden />
+              {l.name}
+              <span className="meta">
+                {" "}
+                · {t("itemCount", { n: l._count?.items ?? 0 })}
+                {f.totalCount > 0
+                  ? ` · ${t("freshnessLocationPct", { percent: f.percent })}`
+                  : ` · ${t("freshnessLocationEmpty")}`}
+              </span>
+            </div>
+            <div className="tree-row-actions">
+              <button type="button" className="btn-action btn-action-danger" onClick={() => handleDelete(l.id)}>
+                {t("delete")}
+              </button>
+            </div>
           </div>
-          <button type="button" className="btn-action btn-action-danger" onClick={() => handleDelete(l.id)}>
-            {t("delete")}
-          </button>
-        </div>
-      ))}
+        );
+      })}
     </main>
   );
 }

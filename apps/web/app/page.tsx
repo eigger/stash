@@ -3,16 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { freshnessTone } from "@stash/shared";
 import { apiJson } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useLocale } from "../lib/i18n/locale-context";
 import { getPushStatus } from "../lib/push";
 import { ItemCard } from "../components/ItemCard";
-import type { Item, Location } from "../lib/types";
+import type { FreshnessSummary, Item, Location } from "../lib/types";
 
 interface ItemStats {
   totalItems: number;
   totalValueByCurrency: Record<string, number>;
+  freshness: FreshnessSummary;
 }
 
 interface OnboardingPushStatus {
@@ -81,6 +83,17 @@ export default function DashboardPage() {
 
   if (loading || !user) return null;
 
+  const freshness = stats?.freshness;
+  const tone = freshness ? freshnessTone(freshness) : "empty";
+  const freshnessHintKey =
+    tone === "good"
+      ? "freshnessGoodHint"
+      : tone === "ok"
+        ? "freshnessOkHint"
+        : tone === "dim"
+          ? "freshnessDimHint"
+          : "freshnessEmptyHint";
+
   return (
     <main className="container">
       <div className="page-header">
@@ -95,6 +108,28 @@ export default function DashboardPage() {
             .map(([currency, value]) => `${value.toLocaleString()} ${currency}`)
             .join(", ")}
         </p>
+      )}
+
+      {freshness && freshness.totalCount > 0 && (
+        <div className={`freshness-card tone-${tone}`}>
+          <div className="page-header" style={{ marginBottom: 0 }}>
+            <strong>{t("freshnessTitle")}</strong>
+            <Link href="/audit">
+              <button type="button" className="secondary">
+                {t("freshnessAuditLink")}
+              </button>
+            </Link>
+          </div>
+          <p style={{ margin: "8px 0 0", fontSize: "1.25rem", fontWeight: 600 }}>
+            {t("freshnessPercentLabel", { percent: freshness.percent })}
+          </p>
+          <div className="freshness-meter" aria-hidden>
+            <span style={{ width: `${freshness.percent}%` }} />
+          </div>
+          <p className="meta" style={{ margin: 0 }}>
+            {t(freshnessHintKey)}
+          </p>
+        </div>
       )}
 
       {busy && <p>{t("loading")}</p>}

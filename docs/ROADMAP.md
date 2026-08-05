@@ -92,4 +92,11 @@ Hypothesis (not a confirmed defect): people abandon inventory when drift can't b
 - **Webhooks:** finish fires `item.updated` for ZERO/MOVE results (shelf labels must not keep stale qty), drained **sequentially in the background** so a 100-item finish does not open 100 concurrent fetches. Confirm still fires per item as the user scans.
 - **Anti-patterns deferred:** streaks, leaderboards, badges/levels, lossy push nags — see workorder §2.2–2.3 (“useful with game stripped off”).
 
-**Next:** B freshness ratios (CONSUMABLE vs ASSET thresholds), then stop for field validation before C/D.
+### P2-B — freshness / inventory trust (this PR)
+
+- **Pure helpers** in `@stash/shared` (`freshness.ts`): CONSUMABLE **30d** / ASSET **365d** thresholds (commented why — tools must not go red in a month). Ratio = trusted items / all non-deleted; never-audited inflate the denominator. Continuous decay (items cross the threshold one by one) — no streak cliff.
+- **API:** `GET /api/items/stats` adds `freshness`; `GET /api/locations` attaches per-location `freshness` for direct children only.
+- **UI:** dashboard trust card (“창고가 흐려졌다” tone, link to `/audit`); location tree dots + percent. No freshness push (v1). Expiry warnings stay on the existing system — not duplicated here.
+- **Pause:** live with A+B ≥3 weeks before C/D (workorder §5).
+
+**Next:** field-validate A+B; only then quality/confirm XP (C) and retrospectives (D).

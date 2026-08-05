@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import {
   barcodeSymbologySchema,
+  computeFreshnessRatio,
+  freshnessPercent,
   guessSymbology,
   itemBulkDeleteSchema,
   itemBulkUpdateSchema,
@@ -275,12 +277,18 @@ export async function itemRoutes(app: FastifyInstance) {
     return { created, errors };
   });
 
-  // 대시보드의 "총 자산가치" 집계용 — price/quantity/currency만 select해서 전체 아이템을
-  // 무겁게 include하지 않고 가볍게 계산한다. currency는 자유 텍스트라 통화별로 따로 합산.
+  // 대시보드의 "총 자산가치" + 가구 신선도(재고 신뢰 비율) 집계.
+  // price/quantity와 lastAuditedAt/itemType만 select — 무거운 include 없이.
   app.get("/stats", async () => {
     const rows = await prisma.item.findMany({
       where: { deletedAt: null },
-      select: { price: true, quantity: true, currency: true },
+      select: {
+        price: true,
+        quantity: true,
+        currency: true,
+        lastAuditedAt: true,
+        itemType: true,
+      },
     });
     let totalItems = 0;
     const totalValueByCurrency: Record<string, number> = {};
@@ -291,7 +299,17 @@ export async function itemRoutes(app: FastifyInstance) {
         totalValueByCurrency[currency] = (totalValueByCurrency[currency] ?? 0) + row.price * row.quantity;
       }
     }
-    return { totalItems, totalValueByCurrency };
+    const freshness = computeFreshnessRatio(rows);
+    return {
+      totalItems,
+      totalValueByCurrency,
+      freshness: {
+        freshCount: freshness.freshCount,
+        totalCount: freshness.totalCount,
+        ratio: freshness.ratio,
+        percent: freshnessPercent(freshness.ratio),
+      },
+    };
   });
 
   app.get("/:id", async (request, reply) => {

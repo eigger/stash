@@ -336,6 +336,84 @@ button:disabled {
   color: var(--color-text-muted);
 }
 
+.badge-success {
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: var(--color-success);
+}
+
+/* 신선도(재고 신뢰) — 잔소리 톤이 아니라 "세계의 상태" */
+.freshness-card {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.freshness-card.tone-good {
+  border-color: color-mix(in srgb, var(--color-success) 35%, var(--color-border));
+}
+
+.freshness-card.tone-ok {
+  border-color: var(--color-warning-border);
+  background: color-mix(in srgb, var(--color-warning-bg) 55%, var(--color-surface));
+}
+
+.freshness-card.tone-dim {
+  border-color: color-mix(in srgb, var(--color-text-muted) 40%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-surface));
+}
+
+.freshness-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+
+.freshness-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-success);
+  transition: width 0.35s ease;
+}
+
+.freshness-card.tone-ok .freshness-meter > span {
+  background: var(--color-warning-text);
+}
+
+.freshness-card.tone-dim .freshness-meter > span {
+  background: var(--color-text-muted);
+}
+
+.freshness-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: var(--color-text-muted);
+}
+
+.freshness-dot.tone-good {
+  background: var(--color-success);
+}
+
+.freshness-dot.tone-ok {
+  background: var(--color-warning-text);
+}
+
+.freshness-dot.tone-dim {
+  background: var(--color-text-muted);
+}
+
+.freshness-dot.tone-empty {
+  background: var(--color-border);
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

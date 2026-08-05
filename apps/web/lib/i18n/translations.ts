@@ -74,6 +74,29 @@ const dict = {
   },
   recentSection: { ko: "최근 등록", en: "Recently added" },
 
+  // Phase 3-B — 신선도 (재고 신뢰). "연속 실패"가 아니라 세계의 상태.
+  freshnessTitle: { ko: "재고 신뢰", en: "Inventory trust" },
+  freshnessPercentLabel: { ko: "최근 확인된 재고 {percent}%", en: "{percent}% recently checked" },
+  freshnessGoodHint: {
+    ko: "창고가 선명합니다. 이 상태를 유지하려면 가끔 재점검하면 됩니다.",
+    en: "The shelves look clear. A quick audit now and then keeps it that way.",
+  },
+  freshnessOkHint: {
+    ko: "창고가 조금 흐려졌습니다. 오래된 위치부터 재점검해 보세요.",
+    en: "The shelves are getting a little cloudy. Audit the older spots first.",
+  },
+  freshnessDimHint: {
+    ko: "창고가 흐려졌습니다. 위치 하나를 골라 5분만 재점검하면 다시 선명해집니다.",
+    en: "The shelves have gone cloudy. Pick one location and spend five minutes auditing.",
+  },
+  freshnessEmptyHint: {
+    ko: "아직 확인할 재고가 없습니다.",
+    en: "Nothing to check yet.",
+  },
+  freshnessAuditLink: { ko: "재점검하기", en: "Start an audit" },
+  freshnessLocationPct: { ko: "신뢰 {percent}%", en: "{percent}% trust" },
+  freshnessLocationEmpty: { ko: "아이템 없음", en: "No items" },
+
   // shopping list
   shoppingListTitle: { ko: "장보기 리스트", en: "Shopping list" },
   shoppingListLink: { ko: "장보기 리스트로 보기", en: "View shopping list" },

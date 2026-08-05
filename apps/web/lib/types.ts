@@ -26,7 +26,16 @@ export interface Location {
   photoUrl: string | null;
   notes: string | null;
   _count?: { items: number };
+  freshness?: FreshnessSummary;
 }
+
+export interface FreshnessSummary {
+  freshCount: number;
+  totalCount: number;
+  ratio: number;
+  percent: number;
+}
+
 
 export interface Category {
   id: string;
