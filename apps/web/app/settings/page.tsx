@@ -60,7 +60,13 @@ export default function SettingsPage() {
     try {
       // 티켓 → location 스트리밍. blob()은 uploads 전체 tar를 메모리에 올려 모바일에서 탭이 죽는다.
       const { ticket } = await apiJson<{ ticket: string }>("/api/backup/export-ticket", { method: "POST" });
-      window.location.href = `${API_URL}/api/backup/export?ticket=${encodeURIComponent(ticket)}`;
+      // API로 스트리밍 다운로드 — Next 페이지 이동이 아니라서 <a> navigate를 쓴다
+      // (location.href는 same-origin일 때 lint에 걸린다).
+      const a = document.createElement("a");
+      a.href = `${API_URL}/api/backup/export?ticket=${encodeURIComponent(ticket)}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     } catch (err: any) {
       show(err.message, "error");
     } finally {

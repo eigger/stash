@@ -78,6 +78,19 @@ export default function ItemsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
+    // 상세에서 삭제 실행취소 후 목록을 다시 불러온다.
+    function kickRefresh() {
+      if (sessionStorage.getItem("stash_items_needs_refresh") !== "1") return;
+      sessionStorage.removeItem("stash_items_needs_refresh");
+      setPage(1);
+      setRefreshKey((k) => k + 1);
+    }
+    kickRefresh();
+    window.addEventListener("stash-items-refresh", kickRefresh);
+    return () => window.removeEventListener("stash-items-refresh", kickRefresh);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     apiJson<Location[]>("/api/locations").then(setLocations);
     apiJson<Category[]>("/api/categories").then(setCategories);

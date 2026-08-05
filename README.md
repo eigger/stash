@@ -9,7 +9,7 @@
 
 **[한국어 README](./README.ko.md)**
 
-Self-hosted home inventory & barcode manager — track everything you own by scanning existing product barcodes (UPC/EAN), self-issued QR labels, or Matter pairing codes. Restock/consume with one continuous scan, watch low-stock and expiry from the dashboard, and print labels.
+Self-hosted home inventory for a household that works by **labels and a scanner**: put a barcode or QR on a thing, scan to restock or consume, and when stock changes an optional webhook updates a printer or Home Assistant label. Track low stock and expiry from the dashboard without turning Stash into a meal planner.
 
 > Current release: **v0.6.5**
 
@@ -37,7 +37,14 @@ Docs: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
 - Offline-friendly PWA: cached app shell and cached item list/detail responses for offline viewing, home-screen shortcuts for Scan / Add item, and an offline scan queue that auto-syncs when back online
 - Bottom navigation is centered in a max-width column on wide screens instead of stretching edge to edge; **More** opens as a slide-up bottom sheet (grouped shortcuts to locations, categories, history, labels, trash, settings, family accounts, integrations) instead of a separate page
 - Outbound inventory webhook for printer / label-device automations (e.g. Home Assistant), with the last delivery failure surfaced in Settings
-- Admin / general roles, first-admin bootstrap, self-service password change, backup/restore, ko/en i18n, light/dark theme
+- Admin / general roles, first-admin bootstrap, self-service password change, **admin reset of another family member's password** (one-time value, not a reveal), this-device logout vs **log out everywhere**, backup/restore, ko/en i18n, light/dark theme
+
+---
+
+## Not in scope
+
+- **Recipes / meal planning / auto-consume from cooking** — Stash tracks what you have and how much; it does not decide what to cook or deduct ingredients from a recipe.
+- **Multi-tenant / per-household data isolation in one process** — one instance is one household. Separate families should run separate containers rather than share a database with `groupId` filters.
 
 ---
 
@@ -170,6 +177,8 @@ npm run dev:web            # :3000
 ```
 
 Open `http://localhost:3000/login`.
+
+If item photos stay blank in local `npm run dev` (web `:3000` → api `:8080`), uncomment `MEDIA_AUTH_DISABLED=true` in `.env` so cross-origin `<img>` requests work without the media cookie. **Never enable that in production.**
 
 Useful scripts: `npm run build`, `npm run test`, `npm run prisma:generate`.
 
