@@ -292,6 +292,18 @@ export function BottomNav() {
                 </button>
               )}
             </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--color-text-muted)",
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: "1px solid var(--color-border)",
+              }}
+            >
+              v{process.env.APP_VERSION}
+            </div>
           </div>
         </div>
       )}

@@ -122,7 +122,7 @@ describe("topConsumed", () => {
 });
 
 describe("duplicatePurchases", () => {
-  it("RESTOCK 2회 이상만", () => {
+  it("서로 다른 날 RESTOCK이 2일 이상만", () => {
     const movements = [
       { itemId: "rice", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-02T00:00:00.000Z" },
       { itemId: "rice", delta: 2, reason: "RESTOCK" as const, occurredAt: "2026-08-20T00:00:00.000Z" },
@@ -132,6 +132,29 @@ describe("duplicatePurchases", () => {
     ];
     expect(duplicatePurchases(movements, rangeAug2026)).toEqual([
       { itemId: "rice", restockCount: 2, restockQty: 3 },
+    ]);
+  });
+
+  it("같은 날 연속 스캔은 하루로 묶는다", () => {
+    const movements = [
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:00.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:05.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:10.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:15.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:20.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:25.000Z" },
+    ];
+    expect(duplicatePurchases(movements, rangeAug2026)).toEqual([]);
+  });
+
+  it("같은 날 여러 번 + 다른 날 한 번이면 2일", () => {
+    const movements = [
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:00.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T01:00:05.000Z" },
+      { itemId: "water", delta: 2, reason: "RESTOCK" as const, occurredAt: "2026-08-18T12:00:00.000Z" },
+    ];
+    expect(duplicatePurchases(movements, rangeAug2026)).toEqual([
+      { itemId: "water", restockCount: 2, restockQty: 4 },
     ]);
   });
 });
@@ -177,6 +200,20 @@ describe("purchasedInRange", () => {
     const summary = purchasedInRange(items, rangeAug2026);
     expect(summary.items.map((i) => i.id)).toEqual(["3", "2", "1"]);
     expect(summary.totalByCurrency).toEqual({ KRW: 1000, USD: 50 });
+  });
+
+  it("합계는 목록 limit과 무관하게 전체 기준", () => {
+    const items = Array.from({ length: 60 }, (_, i) => ({
+      id: `i${i}`,
+      name: `item ${i}`,
+      itemType: "CONSUMABLE" as const,
+      price: 100,
+      currency: "KRW",
+      createdAt: `2026-08-${String((i % 28) + 1).padStart(2, "0")}T00:00:00.000Z`,
+    }));
+    const summary = purchasedInRange(items, rangeAug2026, 50);
+    expect(summary.items).toHaveLength(50);
+    expect(summary.totalByCurrency).toEqual({ KRW: 6000 });
   });
 });
 

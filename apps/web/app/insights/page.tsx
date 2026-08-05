@@ -101,6 +101,7 @@ export default function InsightsPage() {
         <>
           <section style={{ marginTop: 20 }}>
             <h2>{t("insightsUntouchedTitle", { days: data.untouchedDays })}</h2>
+            <p className="meta">{t("insightsUntouchedHint")}</p>
             {data.untouched.length === 0 ? (
               <p className="meta">{t("insightsUntouchedEmpty")}</p>
             ) : (

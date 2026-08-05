@@ -123,33 +123,44 @@ export function topConsumed(
 
 export type DuplicatePurchase = {
   itemId: string;
+  /** 서로 다른 UTC 날짜에 RESTOCK이 있었던 날 수(연속 스캔 여러 번은 하루로 묶음). */
   restockCount: number;
   restockQty: number;
 };
 
+/** UTC 달력일 키 — 같은 날 연속 스캔을 한 번의 장보기로 묶기 위함. */
+export function utcDayKey(at: Date | string): string | null {
+  const d = toDate(at);
+  if (!d) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 /**
- * 같은 아이템에 기간 내 RESTOCK(delta>0)이 2회 이상 — 재구매/재입고 신호.
- * 구매 영수증이 없어 movement 횟수로 정의. ADJUST는 보정이지 구매가 아니라 제외.
+ * 같은 아이템이 기간 내 **서로 다른 날**에 RESTOCK(delta>0)된 경우.
+ * 연속 스캔으로 같은 날 6번 찍어도 1일로 센다 — "한 달에 두 번 사 온 것"에 가깝게.
+ * ADJUST는 보정이지 구매가 아니라 제외. 영수증이 없어 날짜 단위로 근사한다.
  */
 export function duplicatePurchases(
   movements: InsightsMovement[],
   range: DateRange,
   limit = 10,
 ): DuplicatePurchase[] {
-  const byItem = new Map<string, { count: number; qty: number }>();
+  const byItem = new Map<string, { days: Set<string>; qty: number }>();
   for (const m of movements) {
     if (m.reason !== "RESTOCK" || m.delta <= 0) continue;
     if (!inRange(m.occurredAt, range)) continue;
-    const cur = byItem.get(m.itemId) ?? { count: 0, qty: 0 };
-    cur.count += 1;
+    const day = utcDayKey(m.occurredAt);
+    if (!day) continue;
+    const cur = byItem.get(m.itemId) ?? { days: new Set<string>(), qty: 0 };
+    cur.days.add(day);
     cur.qty += m.delta;
     byItem.set(m.itemId, cur);
   }
   return [...byItem.entries()]
-    .filter(([, v]) => v.count >= 2)
+    .filter(([, v]) => v.days.size >= 2)
     .map(([itemId, v]) => ({
       itemId,
-      restockCount: v.count,
+      restockCount: v.days.size,
       restockQty: v.qty,
     }))
     .sort(
@@ -178,6 +189,8 @@ export type PurchasedSummary = {
  * 기간 내 "산 것". purchasedAt = purchaseDate ?? createdAt
  * (폼에 purchaseDate UI가 아직 없어 대부분 createdAt 폴백).
  * 총액은 단가(price) 합 — 수량 곱이 아님(등록 1건 = 1회 구매 기록으로 본다).
+ * `/items/stats`의 총 자산가치(price×quantity)와 다르다.
+ * 합계는 전체 entries 기준, 목록만 limit으로 자른다(표시용).
  * 통화 없으면 "?" 키(stats와 동일).
  */
 export function purchasedInRange(
@@ -203,14 +216,13 @@ export function purchasedInRange(
       new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime() ||
       a.name.localeCompare(b.name),
   );
-  const sliced = entries.slice(0, limit);
   const totalByCurrency: Record<string, number> = {};
-  for (const e of sliced) {
+  for (const e of entries) {
     if (e.price == null || !Number.isFinite(e.price)) continue;
     const key = e.currency?.trim() || "?";
     totalByCurrency[key] = (totalByCurrency[key] ?? 0) + e.price;
   }
-  return { items: sliced, totalByCurrency };
+  return { items: entries.slice(0, limit), totalByCurrency };
 }
 
 /**
