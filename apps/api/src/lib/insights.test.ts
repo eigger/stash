@@ -4,6 +4,7 @@ import {
   duplicatePurchases,
   findUntouchedItems,
   inRange,
+  localDayKey,
   parseYearMonth,
   purchasedInRange,
   topConsumed,
@@ -156,6 +157,18 @@ describe("duplicatePurchases", () => {
     expect(duplicatePurchases(movements, rangeAug2026)).toEqual([
       { itemId: "water", restockCount: 2, restockQty: 4 },
     ]);
+  });
+
+  it("KST 로컬 같은 날이 UTC로는 갈라져도 1일로 묶인다", () => {
+    // 8/5 08:00 KST = 8/4 23:00Z, 8/5 20:00 KST = 8/5 11:00Z — UTC dayKey면 2일 오탐
+    const kstOffset = -540;
+    expect(localDayKey("2026-08-04T23:00:00.000Z", kstOffset)).toBe("2026-08-05");
+    expect(localDayKey("2026-08-05T11:00:00.000Z", kstOffset)).toBe("2026-08-05");
+    const movements = [
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-04T23:00:00.000Z" },
+      { itemId: "water", delta: 1, reason: "RESTOCK" as const, occurredAt: "2026-08-05T11:00:00.000Z" },
+    ];
+    expect(duplicatePurchases(movements, rangeAug2026, 10, kstOffset)).toEqual([]);
   });
 });
 

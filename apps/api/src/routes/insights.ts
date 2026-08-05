@@ -42,6 +42,10 @@ export async function insightsRoutes(app: FastifyInstance) {
       3650,
       Math.max(1, Number(q.untouchedDays) || UNTOUCHED_DAYS_DEFAULT),
     );
+    // Date#getTimezoneOffset()과 동일 부호. 없으면 0(UTC) — from/to만 보낸 구클라이언트를 깨지 않음.
+    const rawOffset = q.tzOffsetMinutes === undefined ? 0 : Number(q.tzOffsetMinutes);
+    const tzOffsetMinutes =
+      Number.isFinite(rawOffset) && Math.abs(rawOffset) <= 14 * 60 ? Math.trunc(rawOffset) : 0;
     const range = { start: from, end: to };
     const now = new Date();
 
@@ -82,7 +86,7 @@ export async function insightsRoutes(app: FastifyInstance) {
       ...row,
       name: nameById.get(row.itemId) ?? row.itemId,
     }));
-    const duplicates = duplicatePurchases(movementRows, range).map((row) => ({
+    const duplicates = duplicatePurchases(movementRows, range, 10, tzOffsetMinutes).map((row) => ({
       ...row,
       name: nameById.get(row.itemId) ?? row.itemId,
     }));
@@ -91,6 +95,7 @@ export async function insightsRoutes(app: FastifyInstance) {
     return {
       range: { start: from.toISOString(), end: to.toISOString() },
       untouchedDays,
+      tzOffsetMinutes,
       untouched,
       topConsumed: consumed,
       duplicatePurchases: duplicates,

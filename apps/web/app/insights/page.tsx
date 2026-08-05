@@ -40,6 +40,8 @@ export default function InsightsPage() {
     const params = new URLSearchParams({
       from: start.toISOString(),
       to: end.toISOString(),
+      // from/to와 같은 로컬 달력으로 RESTOCK 날짜를 묶기 위함(서버가 타임존을 추측하지 않음).
+      tzOffsetMinutes: String(new Date().getTimezoneOffset()),
     });
     apiJson<InsightsResponse>(`/api/insights?${params}`)
       .then(setData)

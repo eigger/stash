@@ -2,7 +2,8 @@
  * Phase 3-D 회고/발견 — 게임 요소를 걷어내도 "처분 후보·소비·구매" 사실이 남는다.
  *
  * 판단·훈계 문구는 UI 쪽 금지(지시서 §P3-D). 여기 헬퍼는 집계만 한다.
- * 달 경계는 호출측이 from/to로 넘긴다 — 서버가 가구 타임존을 추측하지 않는다.
+ * 달 경계·재입고 날짜 묶음은 호출측이 from/to와 tzOffsetMinutes로 넘긴다 —
+ * 서버가 가구 타임존을 추측하지 않는다.
  */
 
 export type InsightsMovementReason = "RESTOCK" | "CONSUME" | "ADJUST";
@@ -123,20 +124,26 @@ export function topConsumed(
 
 export type DuplicatePurchase = {
   itemId: string;
-  /** 서로 다른 UTC 날짜에 RESTOCK이 있었던 날 수(연속 스캔 여러 번은 하루로 묶음). */
+  /** 서로 다른 로컬 날짜에 RESTOCK이 있었던 날 수(연속 스캔 여러 번은 하루로 묶음). */
   restockCount: number;
   restockQty: number;
 };
 
-/** UTC 달력일 키 — 같은 날 연속 스캔을 한 번의 장보기로 묶기 위함. */
-export function utcDayKey(at: Date | string): string | null {
+/**
+ * 클라이언트 로컬 달력일 키.
+ * `tzOffsetMinutes`는 `Date#getTimezoneOffset()`과 동일 부호
+ * (KST = UTC+9 → -540). 서버가 IANA 타임존을 추측하지 않도록 from/to와 같이 클라이언트가 넘긴다.
+ */
+export function localDayKey(at: Date | string, tzOffsetMinutes = 0): string | null {
   const d = toDate(at);
   if (!d) return null;
-  return d.toISOString().slice(0, 10);
+  if (!Number.isFinite(tzOffsetMinutes)) return null;
+  const localMs = d.getTime() - tzOffsetMinutes * 60_000;
+  return new Date(localMs).toISOString().slice(0, 10);
 }
 
 /**
- * 같은 아이템이 기간 내 **서로 다른 날**에 RESTOCK(delta>0)된 경우.
+ * 같은 아이템이 기간 내 **서로 다른 로컬 날**에 RESTOCK(delta>0)된 경우.
  * 연속 스캔으로 같은 날 6번 찍어도 1일로 센다 — "한 달에 두 번 사 온 것"에 가깝게.
  * ADJUST는 보정이지 구매가 아니라 제외. 영수증이 없어 날짜 단위로 근사한다.
  */
@@ -144,12 +151,13 @@ export function duplicatePurchases(
   movements: InsightsMovement[],
   range: DateRange,
   limit = 10,
+  tzOffsetMinutes = 0,
 ): DuplicatePurchase[] {
   const byItem = new Map<string, { days: Set<string>; qty: number }>();
   for (const m of movements) {
     if (m.reason !== "RESTOCK" || m.delta <= 0) continue;
     if (!inRange(m.occurredAt, range)) continue;
-    const day = utcDayKey(m.occurredAt);
+    const day = localDayKey(m.occurredAt, tzOffsetMinutes);
     if (!day) continue;
     const cur = byItem.get(m.itemId) ?? { days: new Set<string>(), qty: 0 };
     cur.days.add(day);

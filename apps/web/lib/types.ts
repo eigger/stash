@@ -78,6 +78,7 @@ export interface InsightsPurchasedItem {
 export interface InsightsResponse {
   range: { start: string; end: string };
   untouchedDays: number;
+  tzOffsetMinutes?: number;
   untouched: InsightsUntouched[];
   topConsumed: InsightsConsumed[];
   duplicatePurchases: InsightsDuplicate[];
