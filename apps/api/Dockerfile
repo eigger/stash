@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 WORKDIR /app
 # Prisma의 쿼리 엔진 바이너리가 Alpine 런타임에서 필요로 함 (없으면 libssl.so 관련 오류 발생)
 RUN apk add --no-cache openssl
