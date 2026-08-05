@@ -15,7 +15,7 @@ import { OneTimeSecrets, type OneTimeSecret } from "../../components/OneTimeSecr
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, loading, isAdmin, logout } = useAuth();
+  const { user, loading, isAdmin, logout, logoutAll } = useAuth();
   const { show } = useToast();
   const { t } = useLocale();
   const [restoring, setRestoring] = useState(false);
@@ -108,7 +108,21 @@ export default function SettingsPage() {
       <div className="card">
         <h2 style={{ marginTop: 0 }}>{t("myAccountTitle")}</h2>
         <p className="meta">{user.name} ({user.email}) · {user.role === "ADMIN" ? t("roleAdmin") : t("roleGeneral")}</p>
-        <button className="secondary" onClick={logout}>{t("logoutButton")}</button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button type="button" className="secondary" onClick={() => void logout()}>
+            {t("logoutButton")}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              if (!confirm(t("confirmLogoutAll"))) return;
+              void logoutAll();
+            }}
+          >
+            {t("logoutAllButton")}
+          </button>
+        </div>
 
         <h3 style={{ marginBottom: 8 }}>{t("changePasswordTitle")}</h3>
         <form onSubmit={handleChangePassword} className="form">

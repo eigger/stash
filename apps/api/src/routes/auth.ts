@@ -71,9 +71,15 @@ export async function authRoutes(app: FastifyInstance) {
     },
   );
 
-  // 로그아웃은 전체 기기 토큰을 무효화(tokenVersion++)하고 미디어 쿠키도 지운다.
-  // 기기별 세션 목록은 없어서 "이 기기만" 로그아웃은 지원하지 않는다.
-  app.post("/logout", { preHandler: [app.authenticate] }, async (request, reply) => {
+  // 기본 로그아웃은 이 기기의 미디어 쿠키만 지운다. tokenVersion을 올리면 폰에서 로그아웃할 때
+  // 주방 태블릿까지 끊기므로, 전 기기 무효화는 /logout-all 과 비밀번호 변경에만 둔다.
+  // 트레이드오프: 기본 로그아웃 후에도 탈취된 Bearer는 최대 7일 유효하다.
+  app.post("/logout", { preHandler: [app.authenticate] }, async (_request, reply) => {
+    clearMediaCookie(reply);
+    return reply.code(204).send();
+  });
+
+  app.post("/logout-all", { preHandler: [app.authenticate] }, async (request, reply) => {
     await bumpTokenVersion(request.user.sub);
     clearMediaCookie(reply);
     return reply.code(204).send();

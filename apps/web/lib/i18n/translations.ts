@@ -454,6 +454,11 @@ const dict = {
   menuGroupAccount: { ko: "계정 · 연동", en: "Account & integrations" },
   myAccountTitle: { ko: "내 계정", en: "My account" },
   logoutButton: { ko: "로그아웃", en: "Log out" },
+  logoutAllButton: { ko: "모든 기기에서 로그아웃", en: "Log out everywhere" },
+  confirmLogoutAll: {
+    ko: "모든 기기에서 로그아웃할까요? 다른 폰·태블릿·PC의 세션도 즉시 끊깁니다.",
+    en: "Log out on every device? Sessions on other phones, tablets, and PCs will end immediately.",
+  },
   changePasswordTitle: { ko: "비밀번호 변경", en: "Change password" },
   currentPasswordPlaceholder: { ko: "현재 비밀번호", en: "Current password" },
   newPasswordPlaceholder: { ko: "새 비밀번호 (8자 이상)", en: "New password (min 8 characters)" },

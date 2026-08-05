@@ -11,6 +11,7 @@ interface AuthContextValue {
   isAdmin: boolean;
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,8 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchMe();
   }
 
+  async function clearLocalSession() {
+    clearToken();
+    localStorage.removeItem(CACHED_USER_KEY);
+    setUser(null);
+    router.push("/login");
+  }
+
   async function logout() {
-    // 서버에서 tokenVersion을 올리고 미디어 쿠키를 지운다. 실패해도 로컬 상태는 비운다.
+    // 이 기기만 — 서버는 미디어 쿠키만 지우고 다른 기기 JWT는 유지한다.
     try {
       if (getToken()) {
         await apiFetch("/api/auth/logout", { method: "POST" });
@@ -81,14 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    clearToken();
-    localStorage.removeItem(CACHED_USER_KEY);
-    setUser(null);
-    router.push("/login");
+    await clearLocalSession();
+  }
+
+  async function logoutAll() {
+    // 전 기기 — tokenVersion++. 비밀번호 변경과 같은 강도.
+    try {
+      if (getToken()) {
+        await apiFetch("/api/auth/logout-all", { method: "POST" });
+      }
+    } catch {
+      // ignore
+    }
+    await clearLocalSession();
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin: user?.role === "ADMIN", login, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, isAdmin: user?.role === "ADMIN", login, logout, logoutAll }}
+    >
       {children}
     </AuthContext.Provider>
   );
