@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, apiJson } from "../../lib/api";
+import { apiFetch, apiJson, API_URL } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
@@ -10,7 +10,7 @@ import { PushNotificationSettings } from "../../components/PushNotificationSetti
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageToggle } from "../../components/LanguageToggle";
 import { CurrencyToggle } from "../../components/CurrencyToggle";
-import { downloadBlob, todayStamp } from "../../lib/download";
+import { todayStamp } from "../../lib/download";
 import { OneTimeSecrets, type OneTimeSecret } from "../../components/OneTimeSecrets";
 
 export default function SettingsPage() {
@@ -58,9 +58,9 @@ export default function SettingsPage() {
   async function handleExport() {
     setExporting(true);
     try {
-      const res = await apiFetch("/api/backup/export");
-      if (!res.ok) throw new Error(t("exportFailFallback"));
-      await downloadBlob(res, `stash_backup_${todayStamp()}.tar.gz`);
+      // 티켓 → location 스트리밍. blob()은 uploads 전체 tar를 메모리에 올려 모바일에서 탭이 죽는다.
+      const { ticket } = await apiJson<{ ticket: string }>("/api/backup/export-ticket", { method: "POST" });
+      window.location.href = `${API_URL}/api/backup/export?ticket=${encodeURIComponent(ticket)}`;
     } catch (err: any) {
       show(err.message, "error");
     } finally {

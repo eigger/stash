@@ -65,7 +65,7 @@ const app = Fastify({
         const rawUrl = request.raw?.url ?? request.url;
         const safeUrl =
           typeof rawUrl === "string"
-            ? rawUrl.replace(/([?&](?:token|sig)=)[^&]*/gi, "$1[REDACTED]")
+            ? rawUrl.replace(/([?&](?:token|sig|ticket)=)[^&]*/gi, "$1[REDACTED]")
             : rawUrl;
         return {
           method: request.method,
@@ -103,9 +103,9 @@ app.decorate("authenticate", async (request, reply) => {
     return;
   }
 
-  // 미디어 쿠키 토큰(purpose:"media")은 첨부 경로 전용이다. 같은 시크릿으로 서명되지만
-  // role/tv가 없어 API Bearer로 쓰면 전체 API(+requireAdmin DB role 조회)를 뚫을 수 있다.
-  if (request.user.purpose === "media") {
+  // 미디어 쿠키(purpose:"media")·백업 티켓(purpose:"backup")은 전용 경로만 허용한다.
+  // 같은 시크릿으로 서명되지만 role/tv가 없거나 범위가 달라 API Bearer로 쓰면 안 된다.
+  if (request.user.purpose === "media" || request.user.purpose === "backup") {
     reply.code(401).send({ error: "unauthorized" });
     return;
   }
