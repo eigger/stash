@@ -320,7 +320,7 @@ export default function ScanPage() {
   if (loading || !user) return null;
 
   return (
-    <main className="container" style={{ paddingBottom: 84 }}>
+    <main className="container scan-main">
       <h1>{t("scanTitle")}</h1>
       <p className="scan-hint">{t("scanHint")}</p>
       {queueCount > 0 && <p className="scan-hint">{t("scanQueuePendingHint", { count: queueCount })}</p>}
@@ -348,46 +348,41 @@ export default function ScanPage() {
       {processing && <p className="scan-hint">{t("processingLabel")}</p>}
 
       {lastResult && (
-        <div className="streak-banner" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}:{" "}
-            {lastResult.item.name} ({t("quantityLabel")}{" "}
-            {lastResult.item.quantity}){" "}
-            <a href={`/items/${lastResult.item.id}`} style={{ color: "inherit", textDecoration: "underline", marginRight: 12 }}>
+        <div className="streak-banner">
+          <div className="streak-banner-line">
+            <span className="streak-banner-status">
+              {lastResult.created ? t("createdLabel") : lastMode === "consume" ? t("decreasedLabel") : t("increasedLabel")}
+            </span>
+            <span className="streak-banner-name">{lastResult.item.name}</span>
+          </div>
+          <div className="streak-banner-line">
+            <span className="streak-banner-qty">
+              {t("quantityLabel")} {lastResult.item.quantity}
+            </span>
+            <a className="streak-banner-link" href={`/items/${lastResult.item.id}`}>
               {t("viewDetail")}
             </a>
+            <button type="button" className="streak-banner-undo" onClick={undoLastScan}>
+              {t("scanUndoButton")}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={undoLastScan}
-            style={{
-              padding: "4px 8px",
-              fontSize: "0.8rem",
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            {t("scanUndoButton")}
-          </button>
         </div>
       )}
 
       {lastResult && quickEditFor === lastResult.item.id && (
         <div className="card" style={{ marginTop: 8 }}>
           <p className="meta" style={{ marginTop: 0 }}>{t("quickEditHint")}</p>
+          {/* autoFocus를 걸면 스캔이 끝나자마자 모바일 키보드가 올라와 카메라와 결과를 덮는다 —
+              연속 스캔이 기본 흐름이라 이름 수정은 사용자가 직접 탭했을 때만 시작되게 둔다. */}
           <input
             placeholder={t("namePlaceholderRequired")}
             value={quickName}
             onChange={(e) => setQuickName(e.target.value)}
-            autoFocus
             onFocus={(e) => e.target.select()}
             style={{ marginBottom: 8 }}
           />
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={quickLocationId} onChange={(e) => setQuickLocationId(e.target.value)} style={{ flex: 1 }}>
+          <div className="quick-edit-row">
+            <select value={quickLocationId} onChange={(e) => setQuickLocationId(e.target.value)}>
               <option value="">{t("selectLocationOptional")}</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -396,12 +391,14 @@ export default function ScanPage() {
               ))}
             </select>
             <input
+              className="quick-edit-min"
               type="number"
+              inputMode="numeric"
               min={0}
-              placeholder={t("minQuantityLabel")}
+              placeholder={t("minQuantityShort")}
+              aria-label={t("minQuantityLabel")}
               value={quickMinQuantity}
               onChange={(e) => setQuickMinQuantity(e.target.value)}
-              style={{ width: 100 }}
             />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

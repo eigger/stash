@@ -320,6 +320,8 @@ const dict = {
   categoryLabel: { ko: "카테고리", en: "Category" },
   noCategoryOption: { ko: "카테고리 없음", en: "No category" },
   minQuantityLabel: { ko: "재고부족 기준 수량", en: "Low-stock threshold" },
+  // 스캔 화면의 좁은 숫자 입력칸용 — 긴 라벨은 폰에서 잘려 "재고부족 기…"로만 보인다.
+  minQuantityShort: { ko: "최소수량", en: "Min qty" },
   addToShoppingListButton: { ko: "장보기 목록에 추가", en: "Add to shopping list" },
   removeFromShoppingListButton: { ko: "장보기 목록에서 제거", en: "Remove from shopping list" },
   markBoughtButton: { ko: "구매완료", en: "Bought" },

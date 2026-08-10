@@ -632,10 +632,13 @@ button:disabled {
   transform: translateY(0.5px);
 }
 
+/* 세로가 짧은 폰에서 4:3 프레임이 화면을 거의 다 먹으면 결과 배너와 수동 입력이 접힌 화면
+   밖으로 밀린다 — 뷰포트 높이에 상한을 걸면 비율을 유지한 채 폭이 줄어 함께 보인다. */
 .scanner-frame {
   position: relative;
   width: 100%;
   max-width: 360px;
+  max-height: 44vh;
   margin: 0 auto;
   aspect-ratio: 4 / 3;
   border-radius: 16px;
@@ -758,13 +761,101 @@ button:disabled {
   margin-top: 12px;
 }
 
+/* 스캔 화면은 카메라·결과 배너·수동 입력이 한 화면에 다 들어가야 해서 안내문만 한 단계 줄인다
+   (.scan-hint는 다른 화면에서도 쓰이는 공용 클래스라 여기서만 좁혀 적용). */
+.scan-main .scan-hint {
+  font-size: 0.9rem;
+}
+
+/* 하단에 고정된 스캔 모드 토글(입고/소비) 버튼이 페이지 마지막 요소를 가리지 않게,
+   body의 바텀 네비 여백 위에 토글 높이만큼을 더 확보한다. */
+.scan-main {
+  padding-bottom: 76px;
+}
+
+/* 스캔 결과 배너를 한 줄에 밀어넣으면 좁은 폰에서 상품명과 "실행취소"가 글자 단위로 쪼개져
+   접힌다("실행취 / 소") — 애초에 (상태·이름) / (수량·상세·실행취소) 두 줄로 고정하고,
+   길어질 수 있는 건 이름과 수량뿐이라 그 둘만 말줄임 처리한다. */
 .streak-banner {
   background: var(--color-primary);
   color: var(--color-primary-text);
   border-radius: 12px;
   padding: 12px;
-  text-align: center;
   margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.streak-banner-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.streak-banner-status {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.streak-banner-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.streak-banner-qty {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.streak-banner-link {
+  flex: none;
+  color: inherit;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.streak-banner-undo {
+  flex: none;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* 위치 select는 남는 폭을 다 쓰고, 최소수량은 "최소수량"/"Min qty"가 잘리지 않을 만큼만 고정. */
+.quick-edit-row {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-edit-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-edit-min {
+  flex: none;
+  width: 112px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 /* 반복적으로 누르는 조작(스캔 모드 전환, 목록 일괄 작업 등)을 한 손 조작 시 엄지가
