@@ -16,7 +16,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
-    "@fastify/jwt": "^10.2.1",
+    "@fastify/jwt": "^10.2.2",
     "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^11.2.0",
     "@prisma/adapter-pg": "^7.9.1",
@@ -25,7 +25,7 @@
     "bcryptjs": "^3.0.3",
     "bwip-js": "^4.5.1",
     "dotenv": "^17.4.2",
-    "fastify": "^5.11.3",
+    "fastify": "^5.12.0",
     "node-cron": "^4.6.0",
     "pdfkit": "^0.19.1",
     "pg": "^8.23.0",
