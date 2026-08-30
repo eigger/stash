@@ -204,6 +204,23 @@ Useful scripts: `npm run build`, `npm run test`, `npm run prisma:generate`.
 - External barcode lookup (Open Food Facts, UPCItemDB) is optional — manual entry and self-issued QR codes work standalone
 - `APP_PUBLIC_URL` controls the deep-link encoded into self-issued QR labels; set it to your real domain so labels open the app from any camera app
 
+
+### Serving under a subpath (`BASE_PATH`)
+
+The app defaults to the origin root. To hang it off a subpath of a reverse proxy, pass
+`BASE_PATH` to the web container — no rebuild needed:
+
+```bash
+BASE_PATH=/stash docker compose -f docker-compose.prod.yml up -d web
+```
+
+`next build` bakes `basePath` into the output, and some deployments only learn their path
+at run time (Home Assistant Ingress hands out `/api/hassio_ingress/<token>/` per install).
+So the image is built with a `/__BASE_PATH__` placeholder and
+[`apps/web/docker-entrypoint.sh`](./apps/web/docker-entrypoint.sh) rewrites it on start-up;
+changing the value and restarting re-applies from the untouched copy. The proxy must strip
+the prefix before forwarding (HA Ingress already does).
+
 ---
 
 ## CI/CD

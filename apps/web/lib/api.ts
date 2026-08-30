@@ -1,7 +1,10 @@
+import { BASE_PATH } from "./base-path";
+
 function resolveApiUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
   // 배포(Caddy)에서는 same-origin(/api) 호출이 맞고, 로컬 개발에서는 8080 API를 기본값으로 쓴다.
-  if (typeof window !== "undefined" && window.location?.origin) return window.location.origin;
+  // 서브패스 배포에서는 오리진 뒤에 프리픽스까지 붙여야 프록시가 API로 넘겨준다.
+  if (typeof window !== "undefined" && window.location?.origin) return `${window.location.origin}${BASE_PATH}`;
   return "http://localhost:8080";
 }
 

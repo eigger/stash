@@ -204,6 +204,23 @@ npm run dev:web            # :3000
 - 외부 바코드 조회(Open Food Facts, UPCItemDB)는 선택 — 수동 입력과 자체 발급 QR만으로도 전체 동작
 - `APP_PUBLIC_URL`은 자체 발급 QR 라벨에 인코딩되는 딥링크를 결정합니다. 실제 도메인으로 설정해야 아무 카메라 앱으로 스캔해도 앱이 열립니다
 
+
+### 서브패스에 올리기 (`BASE_PATH`)
+
+기본은 오리진 루트입니다. 리버스 프록시의 하위 경로에 붙이려면 web 컨테이너에 `BASE_PATH`만
+넘기면 됩니다 — 이미지를 다시 빌드할 필요는 없습니다.
+
+```bash
+BASE_PATH=/stash docker compose -f docker-compose.prod.yml up -d web
+```
+
+`next build`는 `basePath`를 산출물에 박아버리는데, 배포 경로를 실행 시점에야 아는 경우가
+있습니다(Home Assistant Ingress는 `/api/hassio_ingress/<token>/` 이 설치본마다 다릅니다).
+그래서 이미지는 `/__BASE_PATH__` 플레이스홀더로 빌드하고, 컨테이너가 뜰 때
+[`apps/web/docker-entrypoint.sh`](./apps/web/docker-entrypoint.sh)가 실제 값으로 치환합니다.
+값을 바꿔 다시 띄우면 원본에서 다시 치환합니다. 프록시는 프리픽스를 떼고 넘겨야 합니다
+(HA Ingress는 기본 동작이 그렇습니다).
+
 ---
 
 ## CI/CD

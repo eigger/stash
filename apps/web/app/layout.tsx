@@ -8,6 +8,7 @@ import { ThemeProvider } from "../lib/theme-context";
 import { LocaleProvider } from "../lib/i18n/locale-context";
 import { BottomNav } from "../components/BottomNav";
 import { OfflineBanner } from "../components/OfflineBanner";
+import { withBasePath } from "../lib/base-path";
 
 // 첫 페인트 전에 저장된 테마를 적용해서, React가 붙기 전까지 잠깐 시스템 테마로
 // 보였다가 사용자가 고른 테마로 바뀌는 깜빡임을 막는다.
@@ -22,8 +23,8 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/icons/icon.svg",
-    apple: "/icons/apple-touch-icon.png",
+    icon: withBasePath("/icons/icon.svg"),
+    apple: withBasePath("/icons/apple-touch-icon.png"),
   },
 };
 
