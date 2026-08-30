@@ -40,6 +40,8 @@ services:
       - api
     environment:
       NODE_ENV: production
+      # 서브패스 배포용. 비워두면(기본) 오리진 루트에 붙는다 — .env.example 참고.
+      BASE_PATH: ${BASE_PATH:-}
 
   caddy:
     image: caddy:2

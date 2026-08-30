@@ -1,23 +1,36 @@
-const CACHE_NAME = "stash-shell-v5";
+const CACHE_NAME = "stash-shell-v6";
+
+// public/ 파일은 빌드 시 basePath가 붙지 않는다. 대신 서비스워커는 자기 스코프를 알고 있으므로
+// 거기서 배포 프리픽스를 그대로 얻는다 — 루트 배포면 "", /stash 아래면 "/stash".
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, "");
+const url = (path) => `${BASE_PATH}${path}`;
+
+/** 프리픽스를 뗀, 앱 기준 경로. 라우트 판별은 이 값으로 한다. */
+function appPath(requestUrl) {
+  const { pathname } = new URL(requestUrl);
+  return BASE_PATH && pathname.startsWith(BASE_PATH) ? pathname.slice(BASE_PATH.length) || "/" : pathname;
+}
 // 오프라인에서도 하단 탭 대부분이 최소한 앱 셸(껍데기)은 뜨도록 주요 화면을 미리 캐시해둔다.
 // 주의: cache.addAll()은 하나라도 404면 전체가 실패한다 — 존재하지 않는 라우트를 넣으면
 // 이 목록의 나머지 화면까지 전부 캐시되지 않으니, 라우트를 지우거나 옮길 때 같이 갱신할 것.
+// 주의: 뒤 슬래시가 있어야 한다. trailingSlash 설정 때문에 슬래시 없는 주소는 308이 되고,
+// cache.addAll은 리다이렉트된 응답을 저장하지 못해 목록 전체가 통째로 실패한다.
 const SHELL_ASSETS = [
   "/",
-  "/login",
-  "/scan",
-  "/items",
-  "/locations",
-  "/categories",
-  "/labels",
-  "/history",
-  "/insights",
-  "/audit",
-  "/shopping",
-  "/trash",
-  "/settings",
-  "/offline",
-];
+  "/login/",
+  "/scan/",
+  "/items/",
+  "/locations/",
+  "/categories/",
+  "/labels/",
+  "/history/",
+  "/insights/",
+  "/audit/",
+  "/shopping/",
+  "/trash/",
+  "/settings/",
+  "/offline/",
+].map(url);
 
 // 셸만 뜨고 안이 텅 비어 있으면 오프라인에서 별 쓸모가 없다 — 아이템 목록/상세(GET)만
 // 최근 성공 응답을 저장해뒀다가, 진짜 오프라인일 때만 그걸로 대신 보여준다. 쓰기 요청
@@ -28,7 +41,7 @@ const ITEMS_API_SUBROUTE_DENYLIST = new Set(["scan", "stats", "export.csv", "imp
 
 function isCacheableItemsGet(request) {
   if (request.method !== "GET") return false;
-  const { pathname } = new URL(request.url);
+  const pathname = appPath(request.url);
   if (pathname === "/api/items") return true;
   const match = pathname.match(/^\/api\/items\/([^/]+)$/);
   return !!match && !ITEMS_API_SUBROUTE_DENYLIST.has(match[1]);
@@ -86,7 +99,7 @@ self.addEventListener("fetch", (event) => {
           // 캐시에도 없는 화면으로 오프라인 이동한 경우 — 이 화면은 처음이라 셸조차 없다는
           // 뜻이므로, 깨진 네트워크 오류 화면 대신 안내 페이지로 보낸다. 페이지 이동(HTML
           // 요청)에만 적용하고, JS/CSS 같은 정적 리소스 요청은 그대로 실패시킨다.
-          if (request.mode === "navigate") return caches.match("/offline");
+          if (request.mode === "navigate") return caches.match(url("/offline/"));
           return Response.error();
         }),
       ),
@@ -94,7 +107,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Stash", body: "", url: "/" };
+  let data = { title: "Stash", body: "", url: url("/") };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {
@@ -104,22 +117,24 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/icons/icon.svg",
-      data: { url: data.url || "/" },
+      icon: url("/icons/icon.svg"),
+      data: { url: data.url || url("/") },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
+  // 서버가 보낸 url은 앱 기준 경로(/items/1)이므로 프리픽스를 붙여 연다.
+  const raw = event.notification.data?.url || "/";
+  const target = BASE_PATH && raw.startsWith(BASE_PATH) ? raw : url(raw);
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
-        if (client.url.includes(url) && "focus" in client) return client.focus();
+        if (client.url.includes(target) && "focus" in client) return client.focus();
       }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     }),
   );
 });

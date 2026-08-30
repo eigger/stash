@@ -8,6 +8,7 @@ import { useToast } from "../../lib/toast-context";
 import { useLocale } from "../../lib/i18n/locale-context";
 import { buildOrderedLocationTree } from "../../lib/locationTree";
 import type { AuditSession, Location } from "../../lib/types";
+import Link from "next/link";
 
 export default function AuditStartPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function AuditStartPage() {
       {locations.length === 0 ? (
         <p className="meta">
           {t("auditNoLocations")}{" "}
-          <a href="/locations">{t("manageLocations")}</a>
+          <Link href="/locations">{t("manageLocations")}</Link>
         </p>
       ) : (
         <div className="card">
