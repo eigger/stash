@@ -14,15 +14,25 @@ updates:
         update-types: ["version-update:semver-major"]
     groups:
       production-minor-patch:
+        applies-to: version-updates
         dependency-type: production
         update-types:
           - "minor"
           - "patch"
       development-minor-patch:
+        applies-to: version-updates
         dependency-type: development
         update-types:
           - "minor"
           - "patch"
+      # 위 ignore는 security update에 걸리지 않는다 — "update-types only affects
+      # version updates, not security updates"(GitHub 문서). 그래서 권고가 뜰 때마다
+      # semver-major 단독 PR이 따로 열린다. 한 그룹으로 묶어서 "major는 한 브랜치에서
+      # 일괄"이라는 위 정책과 결이 맞게 배치로 받는다.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -30,6 +40,11 @@ updates:
       interval: weekly
     groups:
       actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
         patterns:
           - "*"
 
