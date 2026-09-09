@@ -1214,3 +1214,15 @@ th {
   font-weight: 650;
   text-decoration: underline;
 }
+
+.backup-page-link {
+  display: inline-block;
+  font-weight: 650;
+  text-decoration: underline;
+}
+
+.backup-restore-warning {
+  margin: 8px 0 16px;
+  color: var(--color-danger);
+  font-weight: 600;
+}
