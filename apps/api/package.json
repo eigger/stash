@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "seed": "tsx --env-file=../../.env prisma/seed.ts",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "lint": "eslint src"
   },
   "dependencies": {
