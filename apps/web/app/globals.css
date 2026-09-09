@@ -1181,3 +1181,36 @@ th {
 .one-time-secrets-confirm input {
   margin-top: 3px;
 }
+
+/* 백업 내보내기 진행률 — 아카이브를 만드는 동안 화면이 침묵하지 않게 한다 */
+.backup-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backup-progress-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.backup-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.backup-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.backup-download-link {
+  align-self: flex-start;
+  font-weight: 650;
+  text-decoration: underline;
+}

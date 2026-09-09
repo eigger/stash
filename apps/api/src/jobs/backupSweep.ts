@@ -1,5 +1,6 @@
 import { UPLOAD_DIR } from "../lib/uploads.js";
 import { sweepStaleBackupArtifacts } from "../lib/backupFiles.js";
+import { sweepExpiredBackupJobs } from "../lib/backupJobs.js";
 
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -15,6 +16,9 @@ const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
  */
 export function startBackupSweepJob(): void {
   const run = () => {
+    // 받아 가지 않은 작업은 목록에서 뺀다. 파일은 아래 스윕이 이름으로 걷는다 —
+    // 재시작하면 목록이 비므로 이름 쪽이 최종 방어선이다.
+    void sweepExpiredBackupJobs(UPLOAD_DIR).catch(() => {});
     sweepStaleBackupArtifacts(UPLOAD_DIR)
       .then((swept) => {
         if (swept.length > 0) {
