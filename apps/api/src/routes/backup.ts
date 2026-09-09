@@ -126,8 +126,15 @@ export async function backupRoutes(app: FastifyInstance) {
     setTimeout(() => usedBackupTicketJtis.delete(jti), 60_000);
 
     const tempDirName = `backup_${Date.now()}`;
-    let tempDir = "";
-    let archivePath = "";
+    // 경로를 여기서 정한다. 빌드가 중간에 실패하면 buildBackupArchive가 값을
+    // 돌려주지 못해, 반쯤 만들어진 사본과 아카이브를 catch가 지울 수 없었다 —
+    // 스윕이 걷을 때까지 두 시간을 기다려야 했다.
+    const tempDir = path.join(UPLOAD_DIR, tempDirName);
+    const archivePath = path.join(UPLOAD_DIR, `${tempDirName}.tar.gz`);
+    const cleanup = () => {
+      rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      rm(archivePath, { force: true }).catch(() => {});
+    };
 
     // 빌드는 첨부가 많으면 분 단위인데, 정리 핸들러는 빌드가 끝나야 걸린다. 그동안
     // 탭을 닫으면 이미 지나간 close 이벤트는 다시 오지 않아 아카이브가 그대로 남는다 —
@@ -138,11 +145,7 @@ export async function backupRoutes(app: FastifyInstance) {
     });
 
     try {
-      ({ tempDir, archivePath } = await buildBackupArchive(tempDirName));
-      const cleanup = () => {
-        rm(tempDir, { recursive: true, force: true }).catch(() => {});
-        rm(archivePath, { force: true }).catch(() => {});
-      };
+      await buildBackupArchive(tempDirName);
 
       const archiveStat = await stat(archivePath);
       if (clientGone) {
@@ -173,8 +176,7 @@ export async function backupRoutes(app: FastifyInstance) {
         .send(stream);
     } catch (err: any) {
       app.log.error(err, "Backup export failed");
-      if (tempDir) rm(tempDir, { recursive: true, force: true }).catch(() => {});
-      if (archivePath) rm(archivePath, { force: true }).catch(() => {});
+      cleanup();
       return reply.code(500).send({ error: `Backup export failed: ${err.message || err}` });
     }
   });
