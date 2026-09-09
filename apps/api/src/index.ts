@@ -23,6 +23,7 @@ import { insightsRoutes } from "./routes/insights.js";
 import { startExpiryNotificationJob } from "./jobs/expiryNotifications.js";
 import { startTrashPurgeJob } from "./jobs/trashPurge.js";
 import { startLowStockSummaryJob } from "./jobs/lowStockSummary.js";
+import { startBackupSweepJob } from "./jobs/backupSweep.js";
 import { localeFromRequest } from "./lib/i18n.js";
 import { getCachedTokenVersion } from "./lib/tokenVersion.js";
 import { isMediaAuthDisabled } from "./lib/mediaAuth.js";
@@ -169,6 +170,7 @@ await app.register(insightsRoutes, { prefix: "/api/insights" });
 startExpiryNotificationJob();
 startTrashPurgeJob();
 startLowStockSummaryJob();
+startBackupSweepJob();
 
 const port = Number(process.env.PORT ?? 8080);
 
