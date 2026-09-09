@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { randomBytes } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
 import { t } from "../lib/i18n.js";
@@ -8,7 +8,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import { existsSync } from "fs";
-import { mkdir, writeFile, readFile, rm, readdir, copyFile } from "fs/promises";
+import { mkdir, writeFile, readFile, rm, readdir, stat } from "fs/promises";
+import { pipeline } from "stream/promises";
+import { linkOrCopy } from "../lib/backupFiles.js";
 
 const execAsync = promisify(exec);
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), "uploads");
@@ -27,6 +29,9 @@ const USER_EXPORT_SELECT = {
 
 // 프로세스 메모리 — 멀티 인스턴스면 인스턴스 간 공유되지 않는다(가정용 단일 컨테이너 전제).
 const usedBackupTicketJtis = new Set<string>();
+
+/** 복원으로 받을 아카이브 상한. 전역 업로드 제한은 사진 한 장 기준이라 백업에는 부족하다 */
+const RESTORE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 async function buildBackupArchive(tempDirName: string): Promise<{ tempDir: string; archivePath: string }> {
   const tempDir = path.join(UPLOAD_DIR, tempDirName);
@@ -79,12 +84,15 @@ async function buildBackupArchive(tempDirName: string): Promise<{ tempDir: strin
       if (entry.isDirectory() && entry.name === tempDirName) continue;
       if (entry.isFile() && entry.name.endsWith(".tar.gz")) continue;
       if (entry.isFile()) {
-        await copyFile(path.join(UPLOAD_DIR, entry.name), path.join(filesDir, entry.name));
+        await linkOrCopy(path.join(UPLOAD_DIR, entry.name), path.join(filesDir, entry.name));
       }
     }
   }
 
   await execAsync(`tar -czf "${archivePath}" -C "${tempDir}" .`);
+  // 사본은 아카이브가 나온 시점에 쓸모가 없다. 예전에는 다운로드 스트림이 닫힐 때까지
+  // 들고 있어 그동안 계속 자리를 잡고 있었다.
+  await rm(tempDir, { recursive: true, force: true }).catch(() => {});
   return { tempDir, archivePath };
 }
 
@@ -121,19 +129,43 @@ export async function backupRoutes(app: FastifyInstance) {
     let tempDir = "";
     let archivePath = "";
 
+    // 빌드는 첨부가 많으면 분 단위인데, 정리 핸들러는 빌드가 끝나야 걸린다. 그동안
+    // 탭을 닫으면 이미 지나간 close 이벤트는 다시 오지 않아 아카이브가 그대로 남는다 —
+    // 아무도 받지 않을 파일이다. 요청이 끊긴 것을 빌드 전부터 지켜본다.
+    let clientGone = false;
+    request.raw.on("close", () => {
+      clientGone = true;
+    });
+
     try {
       ({ tempDir, archivePath } = await buildBackupArchive(tempDirName));
-      const stream = createReadStream(archivePath);
       const cleanup = () => {
         rm(tempDir, { recursive: true, force: true }).catch(() => {});
         rm(archivePath, { force: true }).catch(() => {});
       };
+
+      const archiveStat = await stat(archivePath);
+      if (clientGone) {
+        app.log.warn(
+          { bytes: archiveStat.size },
+          "Backup export abandoned before delivery; discarding archive",
+        );
+        cleanup();
+        reply.hijack();
+        reply.raw.destroy();
+        return reply;
+      }
+
+      const stream = createReadStream(archivePath);
       stream.on("close", cleanup);
       stream.on("error", cleanup);
       reply.raw.on("close", cleanup);
 
       return reply
         .header("Content-Type", "application/gzip")
+        // 길이를 알려야 브라우저가 진행률을 그리고, 길이 없는 chunked 응답을 통째로
+        // 버퍼링하는 프록시에 걸리지 않는다.
+        .header("Content-Length", String(archiveStat.size))
         .header(
           "Content-Disposition",
           `attachment; filename="stash_backup_${new Date().toISOString().slice(0, 10)}.tar.gz"`,
@@ -163,7 +195,7 @@ export async function backupRoutes(app: FastifyInstance) {
 
     // POST /api/backup/restore
     admin.post("/restore", async (request, reply) => {
-      const file = await request.file({ limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB
+      const file = await request.file({ limits: { fileSize: RESTORE_LIMIT_BYTES } });
       if (!file) return reply.code(400).send({ error: t("noBackupFileUploaded", request.locale) });
 
       const restoreTempDirName = `restore_${Date.now()}`;
@@ -171,9 +203,14 @@ export async function backupRoutes(app: FastifyInstance) {
       const archivePath = path.join(UPLOAD_DIR, `${restoreTempDirName}.tar.gz`);
 
       try {
+        // toBuffer()는 아카이브 전체를 메모리에 올린다 — 상한이 500MB라 큰 백업을
+        // 복원하면 그대로 프로세스가 죽는다. 디스크로 흘려보낸다.
         await mkdir(restoreTempDir, { recursive: true });
-        const buffer = await file.toBuffer();
-        await writeFile(archivePath, buffer);
+        await pipeline(file.file, createWriteStream(archivePath));
+        if (file.file.truncated) {
+          const limit = `${Math.floor(RESTORE_LIMIT_BYTES / 1024 / 1024)}MB`;
+          return reply.code(413).send({ error: `Backup file is too large (limit ${limit})` });
+        }
         await execAsync(`tar -xzf "${archivePath}" -C "${restoreTempDir}"`);
 
         const dbJsonPath = path.join(restoreTempDir, "db.json");
@@ -272,7 +309,12 @@ export async function backupRoutes(app: FastifyInstance) {
         if (existsSync(filesDir)) {
           const restoredFiles = await readdir(filesDir);
           for (const filename of restoredFiles) {
-            await copyFile(path.join(filesDir, filename), path.join(UPLOAD_DIR, filename));
+            // 같은 파일시스템이라 링크로 잇는다. 링크는 자리가 비어 있어야 걸리므로
+            // 덮어쓸 자리는 먼저 지운다 — 기존 파일에 덧쓰지 않고 새로 만드는 편이,
+            // 그 파일을 가리키는 다른 이름이 있을 때도 안전하다.
+            const dest = path.join(UPLOAD_DIR, filename);
+            await rm(dest, { force: true }).catch(() => {});
+            await linkOrCopy(path.join(filesDir, filename), dest);
           }
         }
 
