@@ -75,3 +75,53 @@ jobs:
 
       - name: Run Tests
         run: npm run test
+
+  # 백업 복원(POST /api/backup/restore)은 성공하면 DB의 모든 테이블을 지우고 백업
+  # 내용으로 되채운다 — `test` 잡과 DB를 나눠 쓰면 서로의 데이터를 지워버리므로,
+  # 이 잡만의 전용 Postgres 컨테이너에서 따로 실행한다.
+  backup-restore:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: stash
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: stash_backup_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://stash:test@localhost:5432/stash_backup_test
+      # 티켓·로그인 토큰을 서명하는 데 쓴다. 프로덕션 기본값 검사에 걸리지 않는 값이면 된다.
+      JWT_SECRET: backup-restore-integration-test-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prisma Generate
+        run: npm run prisma:generate -w apps/api
+
+      - name: Run Prisma Migrate
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma --config apps/api/prisma.config.ts
+
+      # @stash/shared는 dist/를 가리키므로(패키지 main), 테스트 import 전에 빌드가 필요하다.
+      # 루트 `npm test`는 build:shared를 포함하지만 이 잡은 test:integration만 직접 부른다.
+      - name: Build shared package
+        run: npm run build:shared
+
+      - name: Run backup/restore integration tests
+        run: npm run test:integration -w apps/api
