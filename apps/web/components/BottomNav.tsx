@@ -146,6 +146,16 @@ function IntegrationIcon({ size = 24 }: { size?: number }) {
   );
 }
 
+function BackupIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg {...iconProps()} width={size} height={size}>
+      <path d="M3 7h18v4H3z" />
+      <path d="M5 11v9h14v-9" />
+      <path d="M10 15h4" />
+    </svg>
+  );
+}
+
 function AuditIcon({ size = 24 }: { size?: number }) {
   return (
     <svg {...iconProps()} width={size} height={size}>
@@ -288,6 +298,11 @@ export function BottomNav() {
               {isAdmin && (
                 <button type="button" className="sheet-item" onClick={() => go("/settings/integrations")}>
                   <IntegrationIcon size={20} /> {t("integrationSettings")}
+                </button>
+              )}
+              {isAdmin && (
+                <button type="button" className="sheet-item" onClick={() => go("/backup")}>
+                  <BackupIcon size={20} /> {t("backupRestoreTitle")}
                 </button>
               )}
             </div>

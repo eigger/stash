@@ -582,6 +582,7 @@ const dict = {
   },
   backupDiscardLabel: { ko: "지우기", en: "Discard" },
   backupCancelLabel: { ko: "취소", en: "Cancel" },
+  goToBackupPage: { ko: "백업·복원 열기", en: "Open backup & restore" },
   backupBuildFailed: {
     ko: "백업을 만들지 못했습니다 — {detail}",
     en: "Could not build the backup — {detail}",
