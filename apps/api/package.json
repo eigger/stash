@@ -45,10 +45,10 @@
     "@types/qrcode": "^1.5.5",
     "@types/web-push": "^3.6.4",
     "eslint": "^9.39.5",
-    "prisma": "^7.10.0",
+    "prisma": "^7.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "typescript-eslint": "^8.71.1",
-    "vitest": "^4.1.11"
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^4.1.12"
   }
 }
