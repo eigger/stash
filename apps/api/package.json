@@ -40,7 +40,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20.14.15",
     "@types/node-cron": "^3.0.11",
-    "@types/pdfkit": "^0.17.6",
+    "@types/pdfkit": "^0.17.7",
     "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.5",
     "@types/web-push": "^3.6.4",
@@ -48,7 +48,7 @@
     "prisma": "^7.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "typescript-eslint": "^8.71.2",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^4.1.12"
   }
 }
