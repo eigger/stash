@@ -23,7 +23,12 @@ export const itemInputSchema = z.object({
   condition: itemConditionSchema.nullable().optional(),
 });
 
-export const itemUpdateSchema = itemInputSchema.partial();
+// Zod 4 applies defaults inside optional fields. PATCH must leave omitted
+// quantity and itemType untouched instead of applying the creation defaults.
+export const itemUpdateSchema = itemInputSchema.partial().extend({
+  quantity: itemInputSchema.shape.quantity.removeDefault().optional(),
+  itemType: itemTypeSchema.optional(),
+});
 
 export const maintenanceRecordInputSchema = z.object({
   date: z.string().min(1),
