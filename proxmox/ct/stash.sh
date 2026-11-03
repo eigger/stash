@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
+# The community-scripts engine lives in community-scripts/core. The ct/ and install/
+# scripts are resolved against COMMUNITY_SCRIPTS_URL, so point that at this repository's
+# proxmox/ directory: install/stash-install.sh is then fetched from here, not upstream.
+export COMMUNITY_SCRIPTS_URL="${COMMUNITY_SCRIPTS_URL:-https://raw.githubusercontent.com/eigger/stash/master/proxmox}"
+COMMUNITY_SCRIPTS_CORE_URL="${COMMUNITY_SCRIPTS_CORE_URL:-https://raw.githubusercontent.com/community-scripts/core/main}"
+export COMMUNITY_SCRIPTS_CORE_URL
 
-# Intercept and redirect the installer script download to our own repository
-function curl() {
-  if [[ "$*" == *"community-scripts/ProxmoxVE/main/install/stash-install.sh"* ]]; then
-    command curl -fsSL "https://raw.githubusercontent.com/eigger/stash/master/proxmox/install/stash-install.sh"
-  else
-    command curl "$@"
-  fi
-}
-export -f curl
+# `source <(curl ...)` would ignore a failed download and keep going with every function
+# undefined, so fetch first and stop on failure.
+if ! _stash_build_func="$(curl -fsSL "${COMMUNITY_SCRIPTS_CORE_URL}/core/build.func")" || [[ -z "$_stash_build_func" ]]; then
+  echo "stash: could not download the community-scripts engine from ${COMMUNITY_SCRIPTS_CORE_URL}/core/build.func" >&2
+  exit 1
+fi
+# Source through a pipe like upstream does: the engine treats a regular-file BASH_SOURCE as a
+# local checkout.
+# shellcheck source=/dev/null
+source <(printf '%s\n' "$_stash_build_func")
+unset _stash_build_func
 
 # Copyright (c) 2021-2026 community-scripts ORG
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
