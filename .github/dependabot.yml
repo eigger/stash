@@ -65,3 +65,5 @@ updates:
     ignore:
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
+
+# Manual update check requested: 2026-11-10T01:09:55+00:00
